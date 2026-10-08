@@ -6,8 +6,7 @@ const time=v=>P.hhmm(v)+(v>=1440?' <small class="day-tag">隔日</small>':'');
 const daysText=days=>days.length===7?'每日':days.map(d=>'週'+WEEK[d]).join('、');
 P.STATIONS.forEach((name,i)=>{for(const id of ['origin','destination']){const o=document.createElement('option');o.value=i;o.textContent=name;$(id).append(o);}});
 $('origin').value='1';$('destination').value='9';
-// Departure picker: half-hour slots grouped by time of day, like a booking site; default to today and the next slot.
-for(const [label,h0,h1] of [['凌晨',0,5],['上午',6,11],['下午',12,17],['晚上',18,23]]){const g=document.createElement('optgroup');g.label=label;for(let h=h0;h<=h1;h++)for(const m of [0,30]){const o=document.createElement('option');o.value=o.textContent=P.hhmm(h*60+m);g.append(o);}$('after').append(g);}
+// Departure picker holds half-hour slots (static in index.html); default to today and the next slot.
 const slot=t=>P.hhmm(Math.min(1410,Math.floor(P.parseTime(t)/30)*30));
 const now=new Date();$('day').value=String(now.getDay()||7);$('after').value=slot(P.hhmm(now.getHours()*60+now.getMinutes()+29));
 function loadParams(){const p=new URLSearchParams(location.search),ints={from:['origin',0,11],to:['destination',0,11],day:['day',1,7],min:['min-transfer',5,20],wait:['max-wait',20,1440]};for(const [key,[id,min,max]] of Object.entries(ints)){if(!p.has(key))continue;const n=Number(p.get(key));if(Number.isInteger(n)&&n>=min&&n<=max&&[...$(id).options].some(o=>Number(o.value)===n))$(id).value=String(n);}const t=p.get('after');if(t&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t))$('after').value=slot(t);if(p.get('sort')==='duration')$('sort').value='duration';}
@@ -49,7 +48,7 @@ function render(){
 function details(r){return `<div class="legs">${r.legs.map((leg,i)=>{
  const t=D.trips.find(t=>t.no===leg.train&&t.days.includes(result.day));const a=t.stops.findIndex(s=>s.i===leg.origin),b=t.stops.findIndex(s=>s.i===leg.destination);const stops=t.stops.slice(a,b+1).map(s=>P.STATIONS[s.i]).join(' → ');
  return `<div class="leg"><div class="leg-head"><span>${r.type==='transfer'?'第 '+(i+1)+' 段 · ':''}${escapeHTML(leg.train)} 車次</span><span>${P.duration(leg.arrival-leg.departure)}</span></div><p><span class="leg-time">${P.hhmm(leg.departure)}</span> ${P.STATIONS[leg.origin]}出發 → <span class="leg-time">${P.hhmm(leg.arrival)}</span> ${P.STATIONS[leg.destination]}抵達${leg.arrival>=1440?'（隔日）':''}</p><div class="stops">${stops}</div></div>`;}).join('')}</div><div class="operating-days">行駛日：${daysText(r.days)}${r.type==='transfer'?' · '+P.STATIONS[r.via]+'轉乘 '+r.wait+' 分鐘':''} · 抵達時間依目前選擇的星期顯示。</div>`;}
-$('query-form').addEventListener('submit',e=>{e.preventDefault();query();});
+$('query-form').addEventListener('submit',e=>{e.preventDefault();query();});$('query-form').addEventListener('change',query);
 $('swap').addEventListener('click',()=>{const x=$('origin').value;$('origin').value=$('destination').value;$('destination').value=x;});
 $('sort').addEventListener('change',query);
 $('more').addEventListener('click',()=>{limit+=10;render();});$('slow-more').addEventListener('click',()=>{slowLimit+=10;render();});
