@@ -9,7 +9,7 @@ const isoDate=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+
 P.STATIONS.forEach((name,i)=>{for(const id of ['origin','destination']){const o=document.createElement('option');o.value=i;o.textContent=name;$(id).append(o);}});
 $('origin').value='1';$('destination').value='9';
 // Departure picker holds half-hour slots (static in index.html); default to today and the next slot.
-const slot=t=>P.hhmm(Math.min(1410,Math.floor(P.parseTime(t)/30)*30));
+const slot=t=>P.hhmm(Math.min(1410,Math.max(330,Math.floor(P.parseTime(t)/30)*30)));  // slots run 05:30–23:30; first train leaves 05:50
 const now=new Date();$('date').value=isoDate(now);$('after').value=slot(P.hhmm(now.getHours()*60+now.getMinutes()+29));
 function loadParams(){const p=new URLSearchParams(location.search),ints={from:['origin',0,11],to:['destination',0,11],min:['min-transfer',5,20],wait:['max-wait',20,1440]};for(const [key,[id,min,max]] of Object.entries(ints)){if(!p.has(key))continue;const n=Number(p.get(key));if(Number.isInteger(n)&&n>=min&&n<=max&&[...$(id).options].some(o=>Number(o.value)===n))$(id).value=String(n);}const d=p.get('date');if(d&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=$('date').min&&d<=$('date').max)$('date').value=d;const t=p.get('after');if(t&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t))$('after').value=slot(t);if(p.get('sort')==='duration')$('sort').value='duration';}
 loadParams();
