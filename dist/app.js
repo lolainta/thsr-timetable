@@ -3,16 +3,18 @@ const P=window.THSRPlanner,D=window.THSR_DATA,$=id=>document.getElementById(id),
 let result=null,mode='all',limit=8,slowLimit=6,toastTimer;
 const escapeHTML=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const time=v=>P.hhmm(v)+(v>=1440?' <small class="day-tag">隔日</small>':'');
-const daysText=days=>days.length===7?'每日':days.map(d=>'週'+WEEK[d]).join('、');
+const mdText=d=>Number(d.slice(5,7))+'/'+Number(d.slice(8,10));
+const daysText=days=>typeof days[0]==='string'?days.map(mdText).join('、'):days.length===7?'每日':days.map(d=>'週'+WEEK[d]).join('、');
+const isoDate=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 P.STATIONS.forEach((name,i)=>{for(const id of ['origin','destination']){const o=document.createElement('option');o.value=i;o.textContent=name;$(id).append(o);}});
 $('origin').value='1';$('destination').value='9';
 // Departure picker holds half-hour slots (static in index.html); default to today and the next slot.
 const slot=t=>P.hhmm(Math.min(1410,Math.floor(P.parseTime(t)/30)*30));
-const now=new Date();$('day').value=String(now.getDay()||7);$('after').value=slot(P.hhmm(now.getHours()*60+now.getMinutes()+29));
-function loadParams(){const p=new URLSearchParams(location.search),ints={from:['origin',0,11],to:['destination',0,11],day:['day',1,7],min:['min-transfer',5,20],wait:['max-wait',20,1440]};for(const [key,[id,min,max]] of Object.entries(ints)){if(!p.has(key))continue;const n=Number(p.get(key));if(Number.isInteger(n)&&n>=min&&n<=max&&[...$(id).options].some(o=>Number(o.value)===n))$(id).value=String(n);}const t=p.get('after');if(t&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t))$('after').value=slot(t);if(p.get('sort')==='duration')$('sort').value='duration';}
+const now=new Date();$('date').value=isoDate(now);$('after').value=slot(P.hhmm(now.getHours()*60+now.getMinutes()+29));
+function loadParams(){const p=new URLSearchParams(location.search),ints={from:['origin',0,11],to:['destination',0,11],min:['min-transfer',5,20],wait:['max-wait',20,1440]};for(const [key,[id,min,max]] of Object.entries(ints)){if(!p.has(key))continue;const n=Number(p.get(key));if(Number.isInteger(n)&&n>=min&&n<=max&&[...$(id).options].some(o=>Number(o.value)===n))$(id).value=String(n);}const d=p.get('date');if(d&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=$('date').min&&d<=$('date').max)$('date').value=d;const t=p.get('after');if(t&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t))$('after').value=slot(t);if(p.get('sort')==='duration')$('sort').value='duration';}
 loadParams();
-function opts(){return {origin:Number($('origin').value),destination:Number($('destination').value),day:Number($('day').value),after:P.parseTime($('after').value||'00:00'),minTransfer:Number($('min-transfer').value),maxWait:Number($('max-wait').value),sort:$('sort').value};}
-function permalink(){const o=opts(),url=new URL(location.href);url.search='';const fields={from:o.origin,to:o.destination,day:o.day,after:P.hhmm(o.after),min:o.minTransfer,wait:o.maxWait,sort:o.sort};for(const [k,v] of Object.entries(fields))url.searchParams.set(k,v);return url.href;}
+function opts(){return {origin:Number($('origin').value),destination:Number($('destination').value),date:$('date').value||isoDate(new Date()),after:P.parseTime($('after').value||'00:00'),minTransfer:Number($('min-transfer').value),maxWait:Number($('max-wait').value),sort:$('sort').value};}
+function permalink(){const o=opts(),url=new URL(location.href);url.search='';const fields={from:o.origin,to:o.destination,date:o.date,after:P.hhmm(o.after),min:o.minTransfer,wait:o.maxWait,sort:o.sort};for(const [k,v] of Object.entries(fields))url.searchParams.set(k,v);return url.href;}
 function toast(t){$('toast').textContent=t;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,2600);}
 function query(){limit=8;slowLimit=6;result=P.search(D,opts());if(result.error){$('message').textContent=result.error;$('message').hidden=false;$('results').hidden=true;return;}$('message').hidden=true;$('results').hidden=false;try{history.replaceState(null,'',permalink());}catch{}render();}
 function card(r,slow=false){
@@ -29,7 +31,7 @@ function card(r,slow=false){
 }
 function render(){
  $('route-title').textContent=P.STATIONS[result.origin]+' → '+P.STATIONS[result.destination];
- $('route-subtitle').textContent='星期'+WEEK[result.day]+' · '+$('after').value+' 之後出發 · 轉乘至少 '+$('min-transfer').value+' 分鐘';
+ $('route-subtitle').textContent=mdText(result.date)+'（週'+WEEK[result.day]+'）'+(result.official?' · 官方逐日時刻表（'+mdText(result.fetched)+' 更新）':result.date?' · 常態週時刻表，官方尚未公布該日班表':'')+' · '+$('after').value+' 之後出發 · 轉乘至少 '+$('min-transfer').value+' 分鐘';
  $('benchmark').textContent=result.benchmark===null?'無直達車':P.duration(result.benchmark);
  $('benchmark-note').textContent=result.benchmark===null?'可參考轉乘方案':'全天最短 · '+result.benchmarkTrain+' 車次';
  const early=[...result.useful].sort((a,b)=>a.arrival-b.arrival||a.duration-b.duration)[0]||result.slower[0];
@@ -47,14 +49,14 @@ function render(){
 }
 function details(r){return `<div class="legs">${r.legs.map((leg,i)=>{
  const t=D.trips.find(t=>t.no===leg.train&&t.days.includes(result.day));const a=t.stops.findIndex(s=>s.i===leg.origin),b=t.stops.findIndex(s=>s.i===leg.destination);const stops=t.stops.slice(a,b+1).map(s=>P.STATIONS[s.i]).join(' → ');
- return `<div class="leg"><div class="leg-head"><span>${r.type==='transfer'?'第 '+(i+1)+' 段 · ':''}${escapeHTML(leg.train)} 車次</span><span>${P.duration(leg.arrival-leg.departure)}</span></div><p><span class="leg-time">${P.hhmm(leg.departure)}</span> ${P.STATIONS[leg.origin]}出發 → <span class="leg-time">${P.hhmm(leg.arrival)}</span> ${P.STATIONS[leg.destination]}抵達${leg.arrival>=1440?'（隔日）':''}</p><div class="stops">${stops}</div></div>`;}).join('')}</div><div class="operating-days">行駛日：${daysText(r.days)}${r.type==='transfer'?' · '+P.STATIONS[r.via]+'轉乘 '+r.wait+' 分鐘':''} · 抵達時間依目前選擇的星期顯示。</div>`;}
+ return `<div class="leg"><div class="leg-head"><span>${r.type==='transfer'?'第 '+(i+1)+' 段 · ':''}${escapeHTML(leg.train)} 車次</span><span>${P.duration(leg.arrival-leg.departure)}</span></div><p><span class="leg-time">${P.hhmm(leg.departure)}</span> ${P.STATIONS[leg.origin]}出發 → <span class="leg-time">${P.hhmm(leg.arrival)}</span> ${P.STATIONS[leg.destination]}抵達${leg.arrival>=1440?'（隔日）':''}</p><div class="stops">${stops}</div></div>`;}).join('')}</div><div class="operating-days">行駛日：${daysText(r.days)}${r.type==='transfer'?' · '+P.STATIONS[r.via]+'轉乘 '+r.wait+' 分鐘':''} · 抵達時間依目前選擇的日期顯示。</div>`;}
 $('query-form').addEventListener('submit',e=>{e.preventDefault();query();});$('query-form').addEventListener('change',query);
 $('swap').addEventListener('click',()=>{const x=$('origin').value;$('origin').value=$('destination').value;$('destination').value=x;});
 $('sort').addEventListener('change',query);
 $('more').addEventListener('click',()=>{limit+=10;render();});$('slow-more').addEventListener('click',()=>{slowLimit+=10;render();});
 document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;limit=8;render();}));
 $('results').addEventListener('click',e=>{const btn=e.target.closest('[data-expand]');if(!btn)return;const id=btn.dataset.expand,r=[...result.direct,...result.transfers].find(x=>x.id===id);const el=$('details-'+id);if(el.hidden){el.innerHTML=details(r);el.hidden=false;btn.textContent='收合路線 −';btn.setAttribute('aria-expanded','true');}else{el.hidden=true;btn.textContent='展開路線 ＋';btn.setAttribute('aria-expanded','false');}});
-const presets={taipei:{from:1,to:9,day:4,time:'18:00'},hsinchu:{from:4,to:11,day:6,time:'07:00'},banqiao:{from:2,to:7,day:6,time:'06:00'},north:{from:11,to:1,day:7,time:'07:00'}};
-document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{const p=presets[b.dataset.preset];$('origin').value=p.from;$('destination').value=p.to;$('day').value=p.day;$('after').value=p.time;mode='all';query();}));
+const presets={taipei:{from:1,to:9,time:'18:00'},hsinchu:{from:4,to:11,time:'07:00'},banqiao:{from:2,to:7,time:'06:00'},north:{from:11,to:1,time:'07:00'}};
+document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{const p=presets[b.dataset.preset];$('origin').value=p.from;$('destination').value=p.to;$('after').value=p.time;mode='all';query();}));
 $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(permalink());toast('已複製查詢連結');}catch{toast('請複製瀏覽器網址列的查詢連結');}});
 query();

@@ -27,4 +27,7 @@ for(let day=1;day<=7;day++)for(let o=0;o<12;o++)for(let e=0;e<12;e++)if(o!==e){
  for(const t of x.useful){assert.ok(!t.slow&&!t.dominated);}
  n++;
 }
+if(data.daily){const w=data.daily;assert.ok(w.trips.length>100);for(const t of w.trips){assert.ok(t.dates.every(d=>d>=w.from&&d<=w.to));assert.ok(t.stops[0].dep<1440);for(const s of t.stops)if(s.dep!==null)assert.ok(s.dep-s.arr>=0&&s.dep-s.arr<=10,`${t.no} dwell at ${s.i}`);for(let i=1;i<t.stops.length;i++)assert.ok(t.stops[i].arr>t.stops[i-1].arr);assert.equal(t.stops.at(-1).dep,null);}
+ // National Day extra 3541 (台北 16:36 → 台中, 10/8–10/9) appears when the window covers it.
+ if(w.from<='2026-10-09'&&w.to>='2026-10-09'){const r=P.search(data,{origin:1,destination:6,date:'2026-10-09',after:16*60});assert.ok(r.direct.some(t=>t.train==='3541'));assert.ok(!P.search(data,{origin:1,destination:6,date:'2026-10-12',after:16*60}).direct.some(t=>t.train==='3541'));}n++;}
 console.log(`Passed ${n} route and boundary checks across all station pairs and all weekdays.`);
