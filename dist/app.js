@@ -1,0 +1,57 @@
+'use strict';
+const P=window.THSRPlanner,D=window.THSR_DATA,$=id=>document.getElementById(id),WEEK=['','一','二','三','四','五','六','日'];
+let result=null,mode='all',limit=8,slowLimit=6,toastTimer;
+const escapeHTML=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const time=v=>P.hhmm(v)+(v>=1440?' <small class="day-tag">隔日</small>':'');
+const daysText=days=>days.length===7?'每日':days.map(d=>'週'+WEEK[d]).join('、');
+P.STATIONS.forEach((name,i)=>{for(const id of ['origin','destination']){const o=document.createElement('option');o.value=i;o.textContent=name;$(id).append(o);}});
+$('origin').value='1';$('destination').value='9';
+function loadParams(){const p=new URLSearchParams(location.search),ints={from:['origin',0,11],to:['destination',0,11],day:['day',1,7],min:['min-transfer',5,20],wait:['max-wait',20,1440]};for(const [key,[id,min,max]] of Object.entries(ints)){if(!p.has(key))continue;const n=Number(p.get(key));if(Number.isInteger(n)&&n>=min&&n<=max&&[...$(id).options].some(o=>Number(o.value)===n))$(id).value=String(n);}const t=p.get('after');if(t&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t))$('after').value=t;if(p.get('sort')==='duration')$('sort').value='duration';}
+loadParams();
+function opts(){return {origin:Number($('origin').value),destination:Number($('destination').value),day:Number($('day').value),after:P.parseTime($('after').value||'00:00'),minTransfer:Number($('min-transfer').value),maxWait:Number($('max-wait').value),sort:$('sort').value};}
+function permalink(){const o=opts(),url=new URL(location.href);url.search='';const fields={from:o.origin,to:o.destination,day:o.day,after:P.hhmm(o.after),min:o.minTransfer,wait:o.maxWait,sort:o.sort};for(const [k,v] of Object.entries(fields))url.searchParams.set(k,v);return url.href;}
+function toast(t){$('toast').textContent=t;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,2600);}
+function query(){limit=8;slowLimit=6;result=P.search(D,opts());if(result.error){$('message').textContent=result.error;$('message').hidden=false;$('results').hidden=true;return;}$('message').hidden=true;$('results').hidden=false;try{history.replaceState(null,'',permalink());}catch{}render();}
+function card(r,slow=false){
+ const origin=P.STATIONS[result.origin],dest=P.STATIONS[result.destination],isT=r.type==='transfer';
+ const badge=slow?'較慢／較不實用':isT?'一次轉乘':'直達';
+ let delta=r.delta===null?'此區間無直達車':r.delta<0?'比最快直達省 '+(-r.delta)+' 分':r.delta===0?'與最快直達車程相同':'比最快直達多 '+r.delta+' 分';
+ let compare='直達無需換車，按展開路線查看停靠站。';
+ if(isT){
+  if(r.nextDirect){const n=r.nextDirect;const c=r.arrivalGain>0?'<span class="gain">比下一班直達早到 '+r.arrivalGain+' 分</span>':r.arrivalGain===0?'<span>與下一班直達同時抵達</span>':'<span class="loss">比下一班直達晚到 '+(-r.arrivalGain)+' 分</span>';compare=c+'<span>直達 '+escapeHTML(n.train)+'｜'+P.hhmm(n.departure)+' → '+P.hhmm(n.arrival)+(n.arrival>=1440?'（隔日）':'')+'</span>';}
+  else compare='此出發時間後，沒有可比較的直達班次。';
+ }
+ const warning=isT&&r.dominated?'有更晚出發、同時或更早抵達的直達車':isT&&r.slow?'車程較長；已在第一班車上時可參考':'';
+ return `<article class="route-card" data-id="${r.id}"><div class="card-main"><div class="card-type"><span class="badge ${slow?'slow':isT?'transfer':''}">${badge}</span><span class="train-nos">${isT?escapeHTML(r.first)+' → '+escapeHTML(r.second):escapeHTML(r.train)+' 車次'}</span><small>${isT?P.STATIONS[r.via]+'轉乘':'全程同一班車'}</small></div><div class="journey"><div class="endpoint"><span class="time">${time(r.departure)}</span><span class="station-name">${origin}</span></div><div class="track"><div class="track-line">${isT?'<i class="change-dot"></i>':''}</div><span>${isT?'轉乘 '+r.wait+' 分鐘':'無需換車'}</span></div><div class="endpoint arrival"><span class="time">${time(r.arrival)}</span><span class="station-name">${dest}</span></div></div><div class="card-duration"><strong>${P.duration(r.duration)}</strong><span class="delta ${r.delta<0?'better':r.delta>=15?'worse':''}">${delta}</span></div></div><div class="comparison"><div class="comparison-text">${compare}${warning?'<span class="quick-warning">'+warning+'</span>':''}</div><button class="show-details" data-expand="${r.id}" type="button" aria-expanded="false" aria-controls="details-${r.id}">展開路線 ＋</button></div><div id="details-${r.id}" class="trip-details" hidden></div></article>`;
+}
+function render(){
+ $('route-title').textContent=P.STATIONS[result.origin]+' → '+P.STATIONS[result.destination];
+ $('route-subtitle').textContent='星期'+WEEK[result.day]+' · '+$('after').value+' 之後出發 · 轉乘至少 '+$('min-transfer').value+' 分鐘';
+ $('benchmark').textContent=result.benchmark===null?'無直達車':P.duration(result.benchmark);
+ $('benchmark-note').textContent=result.benchmark===null?'可參考轉乘方案':'全天最短 · '+result.benchmarkTrain+' 車次';
+ const early=[...result.useful].sort((a,b)=>a.arrival-b.arrival||a.duration-b.duration)[0]||result.slower[0];
+ $('earliest').textContent=early?P.hhmm(early.arrival)+(early.arrival>=1440?' +1':''):'—';
+ $('earliest-note').textContent=early?(early.type==='direct'?early.train:early.first+' → '+early.second)+' · '+P.duration(early.duration):'目前條件無班次';
+ $('transfer-count').textContent=result.transfers.length+' 組';
+ const rows=result.useful.filter(r=>mode==='all'||r.type===mode),slower=mode==='direct'?[]:result.slower;
+ $('result-list').innerHTML=rows.slice(0,limit).map(r=>card(r)).join('');
+ $('more').hidden=rows.length<=limit;$('more').textContent='顯示更多班次（還有 '+Math.max(0,rows.length-limit)+' 組）';
+ $('slow-section').hidden=!slower.length;$('slow-count').textContent=slower.length+' 組';
+ $('slow-list').innerHTML=slower.slice(0,slowLimit).map(r=>card(r,true)).join('');
+ $('slow-more').hidden=slower.length<=slowLimit;
+ $('empty').hidden=!!(rows.length||slower.length);
+ document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',b.dataset.mode===mode);b.setAttribute('aria-pressed',String(b.dataset.mode===mode));});
+}
+function details(r){return `<div class="legs">${r.legs.map((leg,i)=>{
+ const t=D.trips.find(t=>t.no===leg.train&&t.days.includes(result.day));const a=t.stops.findIndex(s=>s.i===leg.origin),b=t.stops.findIndex(s=>s.i===leg.destination);const stops=t.stops.slice(a,b+1).map(s=>P.STATIONS[s.i]).join(' → ');
+ return `<div class="leg"><div class="leg-head"><span>${r.type==='transfer'?'第 '+(i+1)+' 段 · ':''}${escapeHTML(leg.train)} 車次</span><span>${P.duration(leg.arrival-leg.departure)}</span></div><p><span class="leg-time">${P.hhmm(leg.departure)}</span> ${P.STATIONS[leg.origin]}出發 → <span class="leg-time">${P.hhmm(leg.arrival)}</span> ${P.STATIONS[leg.destination]}抵達${leg.arrival>=1440?'（隔日）':''}</p><div class="stops">${stops}</div></div>`;}).join('')}</div><div class="operating-days">行駛日：${daysText(r.days)}${r.type==='transfer'?' · '+P.STATIONS[r.via]+'轉乘 '+r.wait+' 分鐘':''} · 抵達時間依目前選擇的星期顯示。</div>`;}
+$('query-form').addEventListener('submit',e=>{e.preventDefault();query();});
+$('swap').addEventListener('click',()=>{const x=$('origin').value;$('origin').value=$('destination').value;$('destination').value=x;});
+$('sort').addEventListener('change',query);
+$('more').addEventListener('click',()=>{limit+=10;render();});$('slow-more').addEventListener('click',()=>{slowLimit+=10;render();});
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;limit=8;render();}));
+$('results').addEventListener('click',e=>{const btn=e.target.closest('[data-expand]');if(!btn)return;const id=btn.dataset.expand,r=[...result.direct,...result.transfers].find(x=>x.id===id);const el=$('details-'+id);if(el.hidden){el.innerHTML=details(r);el.hidden=false;btn.textContent='收合路線 −';btn.setAttribute('aria-expanded','true');}else{el.hidden=true;btn.textContent='展開路線 ＋';btn.setAttribute('aria-expanded','false');}});
+const presets={taipei:{from:1,to:9,day:4,time:'18:00'},hsinchu:{from:4,to:11,day:6,time:'07:00'},banqiao:{from:2,to:7,day:6,time:'06:00'},north:{from:11,to:1,day:7,time:'07:00'}};
+document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{const p=presets[b.dataset.preset];$('origin').value=p.from;$('destination').value=p.to;$('day').value=p.day;$('after').value=p.time;mode='all';query();}));
+$('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(permalink());toast('已複製查詢連結');}catch{toast('請複製瀏覽器網址列的查詢連結');}});
+query();
