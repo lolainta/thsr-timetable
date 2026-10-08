@@ -7,7 +7,7 @@ Compare direct and one-change routes on Taiwan High Speed Rail, for every statio
 ## Features
 
 - All twelve stations, both directions, seven weekdays.
-- Direct trains and single transfers (strictly toward the destination).
+- Direct trains and single transfers, including turn-back routes that overshoot the destination (for example ride to Zuoying, then return north).
 - Minimum connection time of five minutes, adjustable; optional cap on waiting time.
 - Each transfer is benchmarked against the fastest direct train of the day and the next direct train leaving at or after it.
 - Transfers that are at least fifteen minutes slower than the benchmark, or beaten by a later direct train, are collapsed into a separate section.

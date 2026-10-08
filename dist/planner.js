@@ -9,21 +9,24 @@ function search(data,opts){
  if(origin===destination)return {error:'請選擇不同的出發站與到達站。',direct:[],transfers:[],useful:[],slower:[]};
  const dir=origin<destination?'south':'north';
  const trips=data.trips.filter(t=>t.direction===dir&&t.days.includes(day));
+ const all=data.trips.filter(t=>t.days.includes(day));
  const directAll=[];
  for(const t of trips){const a=t.stops.find(s=>s.i===origin),b=t.stops.find(s=>s.i===destination);if(a&&b&&a.dep!==null&&b.arr>a.dep)directAll.push({id:'d'+t.no+'-'+a.dep,type:'direct',departure:a.dep,arrival:b.arr,duration:b.arr-a.dep,train:t.no,legs:[{train:t.no,origin,destination,departure:a.dep,arrival:b.arr}],days:t.operatingDays||t.days});}
  const benchmark=directAll.length?Math.min(...directAll.map(x=>x.duration)):null;
  const direct=directAll.filter(x=>x.departure>=after);
- const destTrips=trips.map(t=>({trip:t,end:t.stops.find(s=>s.i===destination)})).filter(x=>x.end);
+ // Second leg may run either direction: a train that overshoots to 左營 and turns back counts too.
+ const destTrips=all.map(t=>({trip:t,endAt:t.stops.findIndex(s=>s.i===destination)})).filter(x=>x.endAt>=0).map(x=>({...x,end:x.trip.stops[x.endAt]}));
  const map=new Map();
- for(const first of trips){
-  const start=first.stops.find(s=>s.i===origin);if(!start||start.dep===null||start.dep<after)continue;
-  const mids=first.stops.filter(s=>s.i!==origin&&s.i!==destination&&(dir==='south'?s.i>origin&&s.i<destination:s.i<origin&&s.i>destination));
+ for(const first of all){
+  const startAt=first.stops.findIndex(s=>s.i===origin),start=first.stops[startAt];if(!start||start.dep===null||start.dep<after)continue;
+  // Change at any later stop; stop scanning once the first train reaches the destination itself (that is the direct train).
+  const mids=[];for(const s of first.stops.slice(startAt+1)){if(s.i===destination)break;mids.push(s);}
   for(const mid of mids){
-   for(const {trip:second,end} of destTrips){
+   for(const {trip:second,end,endAt} of destTrips){
     if(first.no===second.no)continue;
-    const leave=second.stops.find(s=>s.i===mid.i);if(!leave||leave.dep===null)continue;
+    const leaveAt=second.stops.findIndex(s=>s.i===mid.i),leave=second.stops[leaveAt];if(leaveAt<0||leaveAt>=endAt||leave.dep===null)continue;
     const wait=leave.dep-mid.arr;if(wait<minTransfer||wait>maxWait||end.arr<=leave.dep)continue;
-    const row={id:'t'+first.no+'-'+second.no+'-'+start.dep,type:'transfer',departure:start.dep,arrival:end.arr,duration:end.arr-start.dep,first:first.no,second:second.no,via:mid.i,wait,days:(first.operatingDays||first.days).filter(d=>(second.operatingDays||second.days).includes(d)),legs:[{train:first.no,origin,destination:mid.i,departure:start.dep,arrival:mid.arr},{train:second.no,origin:mid.i,destination,departure:leave.dep,arrival:end.arr}]};
+    const row={id:'t'+first.no+'-'+second.no+'-'+start.dep,type:'transfer',departure:start.dep,arrival:end.arr,duration:end.arr-start.dep,first:first.no,second:second.no,via:mid.i,wait,turnback:first.direction!==second.direction,days:(first.operatingDays||first.days).filter(d=>(second.operatingDays||second.days).includes(d)),legs:[{train:first.no,origin,destination:mid.i,departure:start.dep,arrival:mid.arr},{train:second.no,origin:mid.i,destination,departure:leave.dep,arrival:end.arr}]};
     const old=map.get(row.id);
     // One train pair can connect at several stops; prefer Taichung, then the larger buffer.
     if(!old||(row.via===6&&old.via!==6)||(row.via===old.via&&row.wait>old.wait)||(row.via!==6&&old.via!==6&&row.wait>old.wait))map.set(row.id,row);
