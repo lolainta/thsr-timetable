@@ -48,7 +48,7 @@ function render(){
  document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',b.dataset.mode===mode);b.setAttribute('aria-pressed',String(b.dataset.mode===mode));});
 }
 function details(r){return `<div class="legs">${r.legs.map((leg,i)=>{
- const t=D.trips.find(t=>t.no===leg.train&&t.days.includes(result.day));const a=t.stops.findIndex(s=>s.i===leg.origin),b=t.stops.findIndex(s=>s.i===leg.destination);const stops=t.stops.slice(a,b+1).map(s=>P.STATIONS[s.i]).join(' → ');
+ const a=leg.stops.findIndex(s=>s.i===leg.origin),b=leg.stops.findIndex(s=>s.i===leg.destination);const stops=leg.stops.slice(a,b+1).map(s=>P.STATIONS[s.i]).join(' → ');
  return `<div class="leg"><div class="leg-head"><span>${r.type==='transfer'?'第 '+(i+1)+' 段 · ':''}${escapeHTML(leg.train)} 車次</span><span>${P.duration(leg.arrival-leg.departure)}</span></div><p><span class="leg-time">${P.hhmm(leg.departure)}</span> ${P.STATIONS[leg.origin]}出發 → <span class="leg-time">${P.hhmm(leg.arrival)}</span> ${P.STATIONS[leg.destination]}抵達${leg.arrival>=1440?'（隔日）':''}</p><div class="stops">${stops}</div></div>`;}).join('')}</div><div class="operating-days">行駛日：${daysText(r.days)}${r.type==='transfer'?' · '+P.STATIONS[r.via]+'轉乘 '+r.wait+' 分鐘':''} · 抵達時間依目前選擇的日期顯示。</div>`;}
 $('query-form').addEventListener('submit',e=>{e.preventDefault();query();});$('query-form').addEventListener('change',query);
 $('swap').addEventListener('click',()=>{const x=$('origin').value;$('origin').value=$('destination').value;$('destination').value=x;});
