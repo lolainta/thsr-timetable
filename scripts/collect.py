@@ -7,7 +7,7 @@ Source B (fallback, no credentials): THSRC's website timetable query, one reques
 stop's arrival is explicit. Both answer for today through about today+28 days; the site falls back to the weekly regular
 timetable for later dates. Usage: scripts/collect.py [--days N] [--raw fetched.json] [--rebuild raw.json]
 """
-import concurrent.futures,datetime,json,os,sys,time,urllib.parse,urllib.request,zoneinfo
+import concurrent.futures,datetime,json,os,sys,time,urllib.error,urllib.parse,urllib.request,zoneinfo
 ROOT=__import__('pathlib').Path(__file__).resolve().parent.parent
 CODES=['NanGang','TaiPei','BanQiao','TaoYuan','XinZhu','MiaoLi','TaiZhong','ZhangHua','YunLin','JiaYi','TaiNan','ZuoYing']
 STARTS={'south':[0,1,6],'north':[11,6,10]}  # trains only originate at these stations
@@ -23,7 +23,12 @@ def fetch_tdx(dates):
     token=tdx_token();trips={}
     for date in dates:
         r=urllib.request.Request('https://tdx.transportdata.tw/api/basic/v2/Rail/THSR/DailyTimetable/TrainDate/%s?$format=JSON'%date,headers={'Authorization':'Bearer '+token})
-        rows=json.load(urllib.request.urlopen(r,timeout=60))
+        for attempt in range(8):  # TDX throttles bursts with 429; back off and retry
+            try:rows=json.load(urllib.request.urlopen(r,timeout=60));break
+            except urllib.error.HTTPError as ex:
+                if ex.code!=429:raise
+                wait=int(ex.headers.get('Retry-After') or 0) or 5*(attempt+1);print(date,'429, waiting',wait,'s',file=sys.stderr);time.sleep(wait)
+        else:raise SystemExit('TDX kept throttling')
         if not rows:print(date,'not published yet, stopping',file=sys.stderr);break
         for row in rows:
             info=row['DailyTrainInfo'];direction='south' if info['Direction']==0 else 'north'
@@ -34,7 +39,7 @@ def fetch_tdx(dates):
                 if dep<first-60:dep+=1440
                 out[str(TDX_IDS.index(st['StationID']))]={'arr':arr,'dep':dep}
             trips[date+'|'+info['TrainNo'].lstrip('0')]={'direction':direction,'first':TDX_IDS.index(stops[0]['StationID']),'last':TDX_IDS.index(stops[-1]['StationID']),'stops':out}
-        print(date,'fetched from TDX',len(rows),'trains',file=sys.stderr);time.sleep(0.5)
+        print(date,'fetched from TDX',len(rows),'trains',file=sys.stderr);time.sleep(1.5)
     return trips
 
 def query(o,e,date):
