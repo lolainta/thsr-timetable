@@ -50,8 +50,8 @@ function render(){
 function details(r){return `<div class="legs">${r.legs.map((leg,i)=>{
  const a=leg.stops.findIndex(s=>s.i===leg.origin),b=leg.stops.findIndex(s=>s.i===leg.destination);const stops=leg.stops.slice(a,b+1).map(s=>P.STATIONS[s.i]).join(' → ');
  return `<div class="leg"><div class="leg-head"><span>${r.type==='transfer'?'第 '+(i+1)+' 段 · ':''}${escapeHTML(leg.train)} 車次</span><span>${P.duration(leg.arrival-leg.departure)}</span></div><p><span class="leg-time">${P.hhmm(leg.departure)}</span> ${P.STATIONS[leg.origin]}出發 → <span class="leg-time">${P.hhmm(leg.arrival)}</span> ${P.STATIONS[leg.destination]}抵達${leg.arrival>=1440?'（隔日）':''}</p><div class="stops">${stops}</div></div>`;}).join('')}</div><div class="operating-days">行駛日：${daysText(r.days)}${r.type==='transfer'?' · '+P.STATIONS[r.via]+'轉乘 '+r.wait+' 分鐘':''} · 抵達時間依目前選擇的日期顯示。</div>`;}
-$('query-form').addEventListener('submit',e=>{e.preventDefault();query();});$('query-form').addEventListener('change',query);
-$('swap').addEventListener('click',()=>{const x=$('origin').value;$('origin').value=$('destination').value;$('destination').value=x;});
+$('query-form').addEventListener('submit',e=>{e.preventDefault();query();const target=result.error?$('message'):$('results');target.scrollIntoView({behavior:'smooth',block:'start'});if(!result.error)toast('已更新：直達 '+result.direct.length+' 班、轉乘 '+result.transfers.length+' 組');});$('query-form').addEventListener('change',query);
+$('swap').addEventListener('click',()=>{const x=$('origin').value;$('origin').value=$('destination').value;$('destination').value=x;query();});
 $('sort').addEventListener('change',query);
 $('more').addEventListener('click',()=>{limit+=10;render();});$('slow-more').addEventListener('click',()=>{slowLimit+=10;render();});
 document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;limit=8;render();}));
