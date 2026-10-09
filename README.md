@@ -63,6 +63,10 @@ Pushes to `main`, the daily schedule, and manual dispatch all run `.github/workf
 
 Feature wishes and bug reports go to [GitHub Issues](https://github.com/lolainta/thsr-timetable/issues/new/choose); the templates ask for the query link and the page version shown in the footer.
 
+## License
+
+Code is released under the [MIT License](LICENSE). The timetable, fare and seating data in `data.json` and `dist/data.js` come from Taiwan High Speed Rail Corporation, via its website and the [TDX](https://tdx.transportdata.tw/) platform, and remain subject to their terms; TDX data is published under Taiwan's Open Government Data License.
+
 ## Disclaimer
 
 This is an independent project and is not affiliated with Taiwan High Speed Rail Corporation. Delays, seat availability and special-date timetables must be confirmed on the official site.
