@@ -1,0 +1,29 @@
+name: 回報問題
+description: 班次不對、畫面壞掉、按鈕沒反應
+labels: [bug]
+body:
+  - type: input
+    id: query
+    attributes:
+      label: 查詢條件
+      description: 直接貼「複製查詢連結」的網址最快。
+      placeholder: https://thsr.lolainta.tw/?from=1&to=9&date=2026-10-11&after=18:00
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 發生什麼事
+      description: 看到什麼、預期什麼。截圖請直接貼上。
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 網頁版本
+      description: 頁面最下方「版本 xxxxxxx」那串。
+  - type: input
+    id: device
+    attributes:
+      label: 裝置與瀏覽器
+      placeholder: 例如 iPhone Safari、Windows Chrome

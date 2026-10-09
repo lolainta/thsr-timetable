@@ -1,0 +1,16 @@
+name: 許願新功能
+description: 想要什麼功能或資訊？
+labels: [enhancement]
+body:
+  - type: textarea
+    id: wish
+    attributes:
+      label: 想要的功能
+      description: 用一兩句話說明，最好附上你會怎麼用它的情境。
+    validations:
+      required: true
+  - type: input
+    id: route
+    attributes:
+      label: 常用路線（選填）
+      placeholder: 例如 台北 → 嘉義

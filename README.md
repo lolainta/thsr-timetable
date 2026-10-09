@@ -59,6 +59,10 @@ npx serve dist         # or any static file server
 
 Pushes to `main`, the daily schedule, and manual dispatch all run `.github/workflows/pages.yml`. Scheduled and manual runs first refetch the timetable and commit it; every run then performs the syntax and route checks and publishes `dist/` to GitHub Pages. The custom domain is set by `dist/CNAME`.
 
+## Feedback
+
+Feature wishes and bug reports go to [GitHub Issues](https://github.com/lolainta/thsr-timetable/issues/new/choose); the templates ask for the query link and the page version shown in the footer.
+
 ## Disclaimer
 
 This is an independent project and is not affiliated with Taiwan High Speed Rail Corporation. Delays, seat availability and special-date timetables must be confirmed on the official site.
