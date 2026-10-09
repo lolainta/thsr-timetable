@@ -4,11 +4,21 @@ let result=null,mode='all',limit=8,slowLimit=6,toastTimer;
 const escapeHTML=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const time=v=>P.hhmm(v)+(v>=1440?' <small class="day-tag">隔日</small>':'');
 const mdText=d=>Number(d.slice(5,7))+'/'+Number(d.slice(8,10));
-const daysText=days=>typeof days[0]==='string'?days.map(mdText).join('、'):days.length===7?'每日':days.map(d=>'週'+WEEK[d]).join('、');
+// Per-date trains: say 每日 / 每週五 when the dates follow a weekday rule inside the fetched window, otherwise list date ranges.
+const datesText=dates=>{const w=D.daily,all=[];for(let d=new Date(w.from+'T00:00:00');;d.setDate(d.getDate()+1)){const iso=isoDate(d);if(iso>w.to)break;all.push(iso);}
+ const set=new Set(dates),wd=iso=>new Date(iso+'T00:00:00').getDay()||7,span='（'+mdText(w.from)+'～'+mdText(w.to)+'）';
+ if(all.every(d=>set.has(d)))return '每日'+span;
+ // Weekday rule by majority (holidays break strict patterns), then list the exceptions; fall back to date ranges if there are many.
+ const days=[1,2,3,4,5,6,7].filter(w=>{const pool=all.filter(d=>wd(d)===w);return pool.length&&pool.filter(d=>set.has(d)).length*2>=pool.length;});
+ const extra=dates.filter(d=>!days.includes(wd(d))),missing=all.filter(d=>days.includes(wd(d))&&!set.has(d));
+ if(days.length&&extra.length+missing.length<=4)return (days.length===7?'每日':'每週'+days.map(d=>WEEK[d]).join('、'))+(extra.length?'，另 '+extra.map(mdText).join('、'):'')+(missing.length?'，'+missing.map(mdText).join('、')+' 除外':'')+span;
+ const ranges=[];for(const d of dates){const last=ranges[ranges.length-1];if(last&&isoDate(new Date(new Date(last[1]+'T00:00:00').getTime()+864e5))===d)last[1]=d;else ranges.push([d,d]);}
+ return ranges.map(([a,b])=>a===b?mdText(a)+'（'+WEEK[wd(a)]+'）':mdText(a)+'～'+mdText(b)).join('、');};
+const daysText=days=>typeof days[0]==='string'?datesText(days):days.length===7?'每日':days.map(d=>'週'+WEEK[d]).join('、');
 // '10–12 車' / '全車自由座'; empty when the dataset has no car info for this train
 const carsText=cars=>{if(!cars||!cars.length)return '';if(cars.length>=12)return '全車自由座';const r=[];for(const c of cars){const last=r[r.length-1];if(last&&last[1]===c-1)last[1]=c;else r.push([c,c]);}return r.map(([a,b])=>a===b?String(a):a+'–'+b).join('、')+' 車';};
 const isoDate=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-if(D.daily){const w=D.daily;$('data-note').textContent='逐日時刻表、自由座車廂與票價來自 TDX 運輸資料流通服務，'+mdText(w.fetched)+' 更新，涵蓋 '+mdText(w.from)+'～'+mdText(w.to)+'；其他日期依 2026/2/2 起常態時刻表。每日 06:00 自動更新。';}
+if(D.daily){const w=D.daily;$('data-note').textContent=' 逐日時刻表、自由座車廂與票價：TDX 運輸資料流通服務，'+mdText(w.fetched)+' 更新，涵蓋 '+mdText(w.from)+'～'+mdText(w.to)+'，每日 06:00 自動更新；更遠日期依常態時刻表。';}
 P.STATIONS.forEach((name,i)=>{for(const id of ['origin','destination']){const o=document.createElement('option');o.value=i;o.textContent=name;$(id).append(o);}});
 $('origin').value='1';$('destination').value='9';
 // Departure picker holds half-hour slots (static in index.html); default to today and the next slot.
@@ -30,7 +40,7 @@ function card(r,slow=false){
   else compare='此出發時間後，沒有可比較的直達班次。';
  }
  const warning=[isT&&r.turnback?'折返需另購超出區間的車票':'',isT&&r.dominated?'有更晚出發、同時或更早抵達的直達車':isT&&r.slow?'車程較長；已在第一班車上時可參考':''].filter(Boolean).join(' · ');
- const cars=r.legs.map(l=>carsText(l.cars)),carsNote=!cars.every(Boolean)?'':'<small class="cars">'+(cars.length===1&&cars[0]==='全車自由座'?'全車自由座':'自由座 '+cars.map(c=>escapeHTML(c==='全車自由座'?'全車':c)).join('｜'))+'</small>';
+ const cars=r.legs.map(l=>carsText(l.cars)),carsNote=!cars.every(Boolean)?'':'<small class="cars">'+(cars.length===1&&cars[0]==='全車自由座'?'全車自由座':'自由座 '+cars.map(c=>'<span>'+escapeHTML(c==='全車自由座'?'全車':c)+'</span>').join('｜'))+'</small>';
  return `<article class="route-card" data-id="${r.id}"><div class="card-main"><div class="card-type"><span class="badge ${slow?'slow':isT?'transfer':''}">${badge}</span><span class="train-nos">${isT?escapeHTML(r.first)+' → '+escapeHTML(r.second):escapeHTML(r.train)+' 車次'}</span><small>${isT?P.STATIONS[r.via]+(r.turnback?'折返':'轉乘'):'全程同一班車'}</small>${carsNote}</div><div class="journey"><div class="endpoint"><span class="time">${time(r.departure)}</span><span class="station-name">${origin}</span></div><div class="track"><div class="track-line">${isT?'<i class="change-dot"></i>':''}</div><span>${isT?'轉乘 '+r.wait+' 分鐘':'無需換車'}</span></div><div class="endpoint arrival"><span class="time">${time(r.arrival)}</span><span class="station-name">${dest}</span></div></div><div class="card-duration"><strong>${P.duration(r.duration)}</strong><span class="delta ${r.delta<0?'better':r.delta>=15?'worse':''}">${delta}</span></div></div><div class="comparison"><div class="comparison-text">${compare}${warning?'<span class="quick-warning">'+warning+'</span>':''}</div><button class="show-details" data-expand="${r.id}" type="button" aria-expanded="false" aria-controls="details-${r.id}">展開路線 ＋</button></div><div id="details-${r.id}" class="trip-details" hidden></div></article>`;
 }
 function render(){
