@@ -12,8 +12,8 @@
 <section class="intro"><div class="eyebrow"><span class="dot"></span> 常態＋連假疏運班表 · 南下 / 北上</div><h1>換一班，<span>也許更早到。</span></h1><p>把直達與一次轉乘放在一起比較。看抵達時間，也看多花的車程。</p></section>
 <section class="query-panel" aria-label="路線查詢"><form id="query-form">
 <div class="station-fields"><label class="field">出發站<select id="origin" name="origin" required></select></label><button type="button" id="swap" class="swap" aria-label="交換起訖站">⇄</button><label class="field">到達站<select id="destination" name="destination" required></select></label></div>
-<label class="field">出發日期<input id="date" name="date" type="date" min="2026-02-02" max="2026-12-31" required></label>
-<div class="field"><div class="mode" role="group" aria-label="時間條件"><button type="button" data-tmode="depart" class="active" aria-pressed="true">出發時間</button><button type="button" data-tmode="arrive" aria-pressed="false">抵達時間</button></div><input id="after" name="after" type="time" aria-label="時間" min="05:30" max="23:59" required></div>
+<label class="field">出發日期<span class="box"><input id="date" name="date" type="date" min="2026-02-02" max="2026-12-31" required></span></label>
+<div class="field"><div class="mode" role="group" aria-label="時間條件"><button type="button" data-tmode="depart" class="active" aria-pressed="true">出發時間</button><button type="button" data-tmode="arrive" aria-pressed="false">抵達時間</button></div><span class="box"><input id="after" name="after" type="time" aria-label="時間" min="05:30" max="23:59" required></span></div>
 <button class="submit" type="submit">查詢班次 <span aria-hidden="true">→</span></button>
 <div class="query-options"><button type="button" id="now" class="now"><span aria-hidden="true">◉</span> 現在出發</button><label>至少轉乘 <select id="min-transfer"><option value="5">5 分鐘</option><option value="7">7 分鐘</option><option value="10">10 分鐘</option><option value="15">15 分鐘</option><option value="20">20 分鐘</option></select></label><label>最多等車 <select id="max-wait"><option value="20">20 分鐘</option><option value="30" selected>30 分鐘</option><option value="45">45 分鐘</option><option value="60">60 分鐘</option><option value="1440">不限</option></select></label></div>
 </form></section>
