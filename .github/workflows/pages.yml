@@ -44,7 +44,7 @@ jobs:
           git add data.json dist/data.js
           git diff --cached --quiet || (git commit -m "data: refresh official timetable $(date -u +%Y-%m-%d)" && git push)
       - name: Stamp build version
-        run: sed -i "s/__BUILD__/${GITHUB_SHA::7} · $(TZ=Asia/Taipei date +%Y-%m-%d\ %H:%M)/" dist/index.html
+        run: sed -i -e "s/__BUILD__/${GITHUB_SHA::7} · $(TZ=Asia/Taipei date +%Y-%m-%d\ %H:%M)/" -e "s/__REV__/${GITHUB_SHA::7}/g" dist/index.html
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static website
