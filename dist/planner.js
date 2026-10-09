@@ -50,12 +50,22 @@ const arriveBy=opts.arriveBy??null;  // arrive-by mode: keep rows arriving by th
    r.nextDirect=next?{train:next.train,departure:next.departure,arrival:next.arrival,duration:next.duration}:null;
    r.arrivalGain=next?next.arrival-r.arrival:null;
    r.slow=r.delta!==null&&r.delta>=slowThreshold;
-   r.dominated=directAll.some(d=>d.departure>=r.departure&&d.arrival<=r.arrival&&d.duration<=r.duration);
+   // Slow and only marginally earlier than the next direct: not worth the change.
+   r.marginal=r.slow&&!!r.nextDirect&&r.arrivalGain<5;
   }
  }
+ // Pareto frontier over every candidate, direct or transfer: a transfer is dominated when something already
+ // accepted leaves at the same time or later and arrives at the same time or earlier. Direct trains are the
+ // baseline and always stay. Ties: direct, then forward change, then the larger connection buffer.
+ const cands=[...direct,...transfers].sort((a,b)=>a.arrival-b.arrival||b.departure-a.departure||(a.type==='direct'?-1:b.type==='direct'?1:0)||((a.turnback?1:0)-(b.turnback?1:0))||(b.wait||0)-(a.wait||0));
+ let best=null;
+ for(const r of cands){
+  if(r.type==='transfer'){r.dominated=!!best&&best.departure>=r.departure;r.dominatedBy=r.dominated?{type:best.type,train:best.train,first:best.first,second:best.second}:null;if(r.dominated)continue;}
+  if(!best||r.departure>best.departure)best=r;
+ }
  const sort=opts.sort==='duration'?(a,b)=>a.duration-b.duration||a.arrival-b.arrival||a.departure-b.departure:opts.sort==='departure'?(a,b)=>b.departure-a.departure||a.duration-b.duration||(a.type==='direct'?-1:1):(a,b)=>a.arrival-b.arrival||a.duration-b.duration||(a.type==='direct'?-1:1);
- const slower=transfers.filter(t=>t.slow||t.dominated).sort(sort);
- const useful=[...direct,...transfers.filter(t=>!t.slow&&!t.dominated)].sort(sort);
+ const slower=transfers.filter(t=>t.dominated||t.marginal).sort(sort);
+ const useful=[...direct,...transfers.filter(t=>!t.dominated&&!t.marginal)].sort(sort);
  const fares=data.daily&&data.daily.fares?(data.daily.fares[origin+'-'+destination]||data.daily.fares[destination+'-'+origin]||null):null;
  return {origin,destination,day,date,arriveBy,official:!!official,fares,fetched:data.daily?data.daily.fetched:null,window:data.daily?[data.daily.from,data.daily.to]:null,direct:direct.sort(sort),transfers:transfers.sort(sort),useful,slower,benchmark,benchmarkTrain:directAll.find(x=>x.duration===benchmark)?.train,trains:trips.length};
 }

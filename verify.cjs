@@ -12,8 +12,9 @@ check({origin:4,destination:11,day:6},'813','117',78,6);
 check({origin:4,destination:10,day:7},'809','207',69,6);
 check({origin:4,destination:9,day:6},'805','1607',61,6);
 check({origin:11,destination:1,day:7},'806','108',124,6);
-// Turn-back: 彰化 → 板橋 by riding north past 板橋 to 台北, then back south.
-const [,tb]=check({origin:7,destination:2,day:1},'300','205',undefined,1);assert.ok(tb.turnback);assert.ok(!tb.slow&&!tb.dominated);
+// Turn-back: 彰化 → 板橋 by riding north past 板橋 to 台北, then back south; collapsed because a forward change is strictly better.
+const [,tb]=check({origin:7,destination:2,day:1},'300','205',undefined,1);assert.ok(tb.turnback);assert.ok(tb.dominated&&tb.dominatedBy.second==='508');  // beaten by the forward change 300→508 at 桃園, which must itself be useful
+assert.ok(check({origin:7,destination:2,day:1},'300','508')[1].legs[0].destination===3);assert.ok(P.search(data,{origin:7,destination:2,day:1,after:0}).useful.some(t=>t.first==='300'&&t.second==='508'));
 let r=P.search(data,{origin:1,destination:9,day:4,after:0,minTransfer:8,maxWait:30});assert.ok(!r.transfers.some(t=>t.first==='153'&&t.second==='673'));n++;
 r=P.search(data,{origin:2,destination:7,day:5,after:0,minTransfer:5,maxWait:10});assert.ok(!r.transfers.some(t=>t.first==='249'&&t.second==='1327'));n++;
 assert.ok(taipei.slower.some(t=>t.first==='849'&&t.second==='673'));assert.ok(!taipei.useful.some(t=>t.first==='849'&&t.second==='673'));n++;
@@ -23,8 +24,9 @@ assert.equal(data.trips.reduce((a,t)=>a+t.days.length,0),1134);
 for(let day=1;day<=7;day++)for(let o=0;o<12;o++)for(let e=0;e<12;e++)if(o!==e){
  const x=P.search(data,{origin:o,destination:e,day,after:0,minTransfer:5,maxWait:30});
  for(const t of x.transfers){assert.ok(t.wait>=5&&t.wait<=30);assert.equal(t.turnback,DIR.get(t.first)!==DIR.get(t.second));assert.ok(t.arrival>t.departure);assert.equal(t.legs[0].destination,t.legs[1].origin);assert.ok(t.days.includes(day));}
- for(const t of x.slower){assert.ok(t.slow||t.dominated);}
- for(const t of x.useful){assert.ok(!t.slow&&!t.dominated);}
+ for(const t of x.slower){assert.ok(t.dominated||t.marginal);}
+ // Frontier invariant: no useful row is beaten by another useful row on both departure and arrival.
+ for(const t of x.useful)if(t.type==='transfer')for(const u of x.useful)if(u!==t)assert.ok(!(u.departure>=t.departure&&u.arrival<=t.arrival&&(u.departure>t.departure||u.arrival<t.arrival)),`${t.first}→${t.second} beaten by ${u.train||u.first+'→'+u.second}`);
  n++;
 }
 if(data.daily){const w=data.daily;assert.ok(w.trips.length>100);if(w.fares){assert.ok(Object.keys(w.fares).length>=66);for(const f of Object.values(w.fares))assert.ok(f.free>0&&f.standard>=f.free);}if(w.trips.some(t=>t.cars))assert.ok(w.trips.some(t=>t.cars&&t.cars.length));for(const t of w.trips){assert.ok(t.dates.every(d=>d>=w.from&&d<=w.to));assert.ok(t.stops[0].dep<1440);for(const s of t.stops)if(s.dep!==null)assert.ok(s.dep-s.arr>=0&&s.dep-s.arr<=10,`${t.no} dwell at ${s.i}`);for(let i=1;i<t.stops.length;i++)assert.ok(t.stops[i].arr>t.stops[i-1].arr);assert.equal(t.stops.at(-1).dep,null);}
