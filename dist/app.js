@@ -41,13 +41,13 @@ function query(){limit=8;result=P.search(D,opts());if(!result.error)remember(res
 function card(r){
  const origin=P.STATIONS[result.origin],dest=P.STATIONS[result.destination],isT=r.type==='transfer',slow=!!(r.dominated||r.marginal);
  const better=r.dominatedBy?(r.dominatedBy.type==='direct'?'直達 '+escapeHTML(r.dominatedBy.train):escapeHTML(r.dominatedBy.first)+'→'+escapeHTML(r.dominatedBy.second)):'';
- const badge=slow?(r.dominated?'有更好的方案':'只早幾分鐘'):isT?(r.turnback?'折返轉乘':'一次轉乘'):'直達';
+ const badge=slow?(r.dominated?'另有方案':'只早幾分鐘'):isT?(r.turnback?'折返轉乘':'一次轉乘'):'直達';
  let compare='直達無需換車，按展開路線查看停靠站。';
  if(isT){
   if(r.nextDirect){const n=r.nextDirect;const c=r.arrivalGain>0?'<span class="gain">比下一班直達早到 '+r.arrivalGain+' 分</span>':r.arrivalGain===0?'<span>與下一班直達同時抵達</span>':'<span class="loss">比下一班直達晚到 '+(-r.arrivalGain)+' 分</span>';compare=c+'<span>直達 '+escapeHTML(n.train)+'｜'+P.hhmm(n.departure)+' → '+P.hhmm(n.arrival)+(n.arrival>=1440?'（隔日）':'')+'</span>';}
   else compare='此出發時間後，沒有可比較的直達班次。';
  }
- const warning=[isT&&r.turnback?'折返需另購超出區間的車票':'',isT&&r.dominated?'不如 '+better+'：出發同時或更晚，抵達同時或更早':isT&&r.marginal?'多坐 '+r.delta+' 分，只比下一班直達早到 '+r.arrivalGain+' 分':''].filter(Boolean).join(' · ');
+ const warning=[isT&&r.turnback?'折返需另購超出區間的車票':'',isT&&r.dominated?better+' 出發同時或更晚、抵達同時或更早':isT&&r.marginal?'多坐 '+r.delta+' 分，比下一班直達只早到 '+r.arrivalGain+' 分':''].filter(Boolean).join(' · ');
  const cars=r.legs.map(l=>carsText(l.cars)),carsNote=!cars.every(Boolean)?(result.official?'<small class="cars unknown">自由座車廂未公布</small>':''):'<small class="cars">'+(cars.length===1&&cars[0]==='全車自由座'?'全車自由座':'自由座 '+cars.map(c=>'<span>'+escapeHTML(c==='全車自由座'?'全車':c)+'</span>').join('｜'))+'</small>';
  return `<article class="route-card" data-id="${r.id}"><div class="card-main"><div class="card-type"><span class="badge ${slow?'slow':isT?'transfer':''}">${badge}</span><span class="train-nos">${isT?escapeHTML(r.first)+' → '+escapeHTML(r.second):escapeHTML(r.train)+' 車次'}</span><small>${isT?P.STATIONS[r.via]+(r.turnback?'折返':'轉乘'):'全程同一班車'}</small>${carsNote}</div><div class="journey"><div class="endpoint"><span class="time">${time(r.departure)}</span><span class="station-name">${origin}</span></div><div class="track"><div class="track-line">${isT?'<i class="change-dot"></i>':''}</div><span>${isT?'轉乘 '+r.wait+' 分鐘':'無需換車'}</span></div><div class="endpoint arrival"><span class="time">${time(r.arrival)}</span><span class="station-name">${dest}</span></div></div><div class="card-duration"><strong>${P.duration(r.duration)}</strong></div></div><div class="comparison"><div class="comparison-text">${compare}${warning?'<span class="quick-warning">'+warning+'</span>':''}</div><button class="show-details" data-expand="${r.id}" type="button" aria-expanded="false" aria-controls="details-${r.id}">展開路線 ＋</button></div><div id="details-${r.id}" class="trip-details" hidden></div></article>`;
 }
