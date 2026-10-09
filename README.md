@@ -25,7 +25,7 @@ No build step, server, or third-party requests. Static HTML, CSS and JavaScript 
 | `data.json` | Canonical timetable dataset; `dist/data.js` is the same data wrapped for the browser |
 | `verify.cjs` | Route and boundary checks run before every deploy |
 | `scripts/collect.py` | Fetches the official per-date timetable from TDX (stdlib only) |
-| `.github/workflows/pages.yml` | GitHub Pages deployment |
+| `.github/workflows/pages.yml` | GitHub Pages deployment; stamps the commit hash into the footer |
 
 ## Data
 
