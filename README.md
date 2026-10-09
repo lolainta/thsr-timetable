@@ -30,7 +30,7 @@ No build step, server, or third-party requests. Static HTML, CSS and JavaScript 
 
 `trips` covers the 214 train numbers and 1,134 weekly services of the THSRC regular timetable effective 2026-02-02. Arrival variants are separated by operating weekday.
 
-`daily` holds the official per-date timetable for the fetch window (`from`/`to`, usually today plus 28 days, which is as far as TDX publishes). Trips with identical schedules are merged and carry the list of dates they run. `scripts/collect.py` collects it from TDX's THSR DailyTimetable API, one request per date, with every stop's arrival and departure.
+`daily` holds the official per-date timetable, each train's non-reserved car numbers, and the adult one-way fare table, for the fetch window (`from`/`to`, usually today plus 28 days, which is as far as TDX publishes). Trips with identical schedules are merged and carry the list of dates they run. `scripts/collect.py` collects it from TDX's THSR DailyTimetable API, one request per date, with every stop's arrival and departure.
 
 Official query responses were collected for 2026-10-13 through 2026-10-19. Each stop's arrival was queried explicitly rather than estimated from dwell times. Terminal departure values are `null`. Times above 1440 minutes indicate next-day arrivals.
 

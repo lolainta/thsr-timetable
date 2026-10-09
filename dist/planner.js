@@ -18,7 +18,7 @@ function search(data,opts){
  const trips=pool.filter(t=>t.direction===dir&&active(t));
  const all=pool.filter(active);
  const directAll=[];
- for(const t of trips){const a=t.stops.find(s=>s.i===origin),b=t.stops.find(s=>s.i===destination);if(a&&b&&a.dep!==null&&b.arr>a.dep)directAll.push({id:'d'+t.no+'-'+a.dep,type:'direct',departure:a.dep,arrival:b.arr,duration:b.arr-a.dep,train:t.no,legs:[{train:t.no,origin,destination,departure:a.dep,arrival:b.arr,stops:t.stops}],days:shown(t)});}
+ for(const t of trips){const a=t.stops.find(s=>s.i===origin),b=t.stops.find(s=>s.i===destination);if(a&&b&&a.dep!==null&&b.arr>a.dep)directAll.push({id:'d'+t.no+'-'+a.dep,type:'direct',departure:a.dep,arrival:b.arr,duration:b.arr-a.dep,train:t.no,legs:[{train:t.no,origin,destination,departure:a.dep,arrival:b.arr,stops:t.stops,cars:t.cars}],days:shown(t)});}
  const benchmark=directAll.length?Math.min(...directAll.map(x=>x.duration)):null;
  const direct=directAll.filter(x=>x.departure>=after);
  // Second leg may run either direction: a train that overshoots to 左營 and turns back counts too.
@@ -33,7 +33,7 @@ function search(data,opts){
     if(first.no===second.no)continue;
     const leaveAt=second.stops.findIndex(s=>s.i===mid.i),leave=second.stops[leaveAt];if(leaveAt<0||leaveAt>=endAt||leave.dep===null)continue;
     const wait=leave.dep-mid.arr;if(wait<minTransfer||wait>maxWait||end.arr<=leave.dep)continue;
-    const row={id:'t'+first.no+'-'+second.no+'-'+start.dep,type:'transfer',departure:start.dep,arrival:end.arr,duration:end.arr-start.dep,first:first.no,second:second.no,via:mid.i,wait,turnback:first.direction!==second.direction,days:shown(first).filter(d=>shown(second).includes(d)),legs:[{train:first.no,origin,destination:mid.i,departure:start.dep,arrival:mid.arr,stops:first.stops},{train:second.no,origin:mid.i,destination,departure:leave.dep,arrival:end.arr,stops:second.stops}]};
+    const row={id:'t'+first.no+'-'+second.no+'-'+start.dep,type:'transfer',departure:start.dep,arrival:end.arr,duration:end.arr-start.dep,first:first.no,second:second.no,via:mid.i,wait,turnback:first.direction!==second.direction,days:shown(first).filter(d=>shown(second).includes(d)),legs:[{train:first.no,origin,destination:mid.i,departure:start.dep,arrival:mid.arr,stops:first.stops,cars:first.cars},{train:second.no,origin:mid.i,destination,departure:leave.dep,arrival:end.arr,stops:second.stops,cars:second.cars}]};
     const old=map.get(row.id);
     // One train pair can connect at several stops; prefer Taichung, then the larger buffer.
     if(!old||(row.via===6&&old.via!==6)||(row.via===old.via&&row.wait>old.wait)||(row.via!==6&&old.via!==6&&row.wait>old.wait))map.set(row.id,row);
@@ -54,7 +54,8 @@ function search(data,opts){
  const sort=opts.sort==='duration'?(a,b)=>a.duration-b.duration||a.arrival-b.arrival||a.departure-b.departure:(a,b)=>a.arrival-b.arrival||a.duration-b.duration||(a.type==='direct'?-1:1);
  const slower=transfers.filter(t=>t.slow||t.dominated).sort(sort);
  const useful=[...direct,...transfers.filter(t=>!t.slow&&!t.dominated)].sort(sort);
- return {origin,destination,day,date,official:!!official,fetched:data.daily?data.daily.fetched:null,window:data.daily?[data.daily.from,data.daily.to]:null,direct:direct.sort(sort),transfers:transfers.sort(sort),useful,slower,benchmark,benchmarkTrain:directAll.find(x=>x.duration===benchmark)?.train,trains:trips.length};
+ const fares=data.daily&&data.daily.fares?(data.daily.fares[origin+'-'+destination]||data.daily.fares[destination+'-'+origin]||null):null;
+ return {origin,destination,day,date,official:!!official,fares,fetched:data.daily?data.daily.fetched:null,window:data.daily?[data.daily.from,data.daily.to]:null,direct:direct.sort(sort),transfers:transfers.sort(sort),useful,slower,benchmark,benchmarkTrain:directAll.find(x=>x.duration===benchmark)?.train,trains:trips.length};
 }
 const api={STATIONS,hhmm,duration,parseTime,search};global.THSRPlanner=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
