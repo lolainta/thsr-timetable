@@ -12,7 +12,7 @@ Compare direct and one-change routes on Taiwan High Speed Rail, for every statio
 - Minimum connection time of five minutes, adjustable; optional cap on waiting time.
 - Each transfer is benchmarked against the fastest direct train of the day and the next direct train leaving at or after it.
 - Transfers that are at least fifteen minutes slower than the benchmark, or beaten by a later direct train, are collapsed into a separate section.
-- Time condition in two modes: depart after, or arrive by (results then rank by latest departure). A 現在出發 button sets today and the next half-hour slot.
+- Time condition in two modes: depart after, or arrive by (results then rank by latest departure). A 現在出發 button sets today and the current minute.
 - Shareable query links (`after=` or `by=`), swap-stations button, and recent-route chips kept in the browser.
 
 No build step, server, or third-party requests. Static HTML, CSS and JavaScript only.

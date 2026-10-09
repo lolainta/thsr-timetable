@@ -21,9 +21,9 @@ const isoDate=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+
 if(D.daily){const w=D.daily;$('data-note').textContent=' 逐日時刻表、自由座車廂與票價：TDX 運輸資料流通服務，'+mdText(w.fetched)+' 更新，涵蓋 '+mdText(w.from)+'～'+mdText(w.to)+'，每日 06:00 自動更新；更遠日期依常態時刻表。';}
 P.STATIONS.forEach((name,i)=>{for(const id of ['origin','destination']){const o=document.createElement('option');o.value=i;o.textContent=name;$(id).append(o);}});
 $('origin').value='1';$('destination').value='9';
-// Departure picker holds half-hour slots (static in index.html); default to today and the next slot.
-const slot=t=>P.hhmm(Math.min(1410,Math.max(330,Math.floor(P.parseTime(t)/30)*30)));  // slots run 05:30–23:30; first train leaves 05:50
-const now=new Date();$('date').value=isoDate(now);$('after').value=slot(P.hhmm(now.getHours()*60+now.getMinutes()+29));
+// Departure picker is a native time input (a wheel on phones); default to today and the current minute.
+const clampTime=t=>P.hhmm(Math.min(1439,Math.max(330,P.parseTime(t))));  // minute precision; first train leaves 05:50
+const now=new Date();$('date').value=isoDate(now);$('after').value=clampTime(P.hhmm(now.getHours()*60+now.getMinutes()));
 const SAMPLES=[[1,9],[4,11],[2,7],[11,1]];
 const recent=()=>{try{return JSON.parse(localStorage.getItem('recent')||'[]');}catch{return [];}};
 function remember(o,e){try{const r=recent().filter(x=>!(x[0]===o&&x[1]===e));r.unshift([o,e]);localStorage.setItem('recent',JSON.stringify(r.slice(0,4)));}catch{}renderPresets();}
@@ -31,7 +31,7 @@ function renderPresets(){const r=recent(),list=r.length?r:SAMPLES;$('presets-lab
 function setTmode(m){tmode=m;document.querySelectorAll('[data-tmode]').forEach(b=>{const on=b.dataset.tmode===m;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
  // Sort choices follow the mode: depart → earliest arrival first, arrive-by → latest departure first.
  const sort=$('sort'),opt=(v,off)=>{const o=sort.querySelector('[value='+v+']');o.hidden=off;o.disabled=off;};opt('arrival',m==='arrive');opt('departure',m==='depart');  /* iOS ignores hidden on <option>, so disable too */if(sort.value==='arrival'&&m==='arrive')sort.value='departure';if(sort.value==='departure'&&m==='depart')sort.value='arrival';}
-function loadParams(){const p=new URLSearchParams(location.search),ints={from:['origin',0,11],to:['destination',0,11],min:['min-transfer',5,20],wait:['max-wait',20,1440]};for(const [key,[id,min,max]] of Object.entries(ints)){if(!p.has(key))continue;const n=Number(p.get(key));if(Number.isInteger(n)&&n>=min&&n<=max&&[...$(id).options].some(o=>Number(o.value)===n))$(id).value=String(n);}const d=p.get('date');if(d&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=$('date').min&&d<=$('date').max)$('date').value=d;const t=p.get('by')||p.get('after');if(t&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t))$('after').value=slot(t);setTmode(p.has('by')?'arrive':'depart');if(p.get('sort')==='duration')$('sort').value='duration';}
+function loadParams(){const p=new URLSearchParams(location.search),ints={from:['origin',0,11],to:['destination',0,11],min:['min-transfer',5,20],wait:['max-wait',20,1440]};for(const [key,[id,min,max]] of Object.entries(ints)){if(!p.has(key))continue;const n=Number(p.get(key));if(Number.isInteger(n)&&n>=min&&n<=max&&[...$(id).options].some(o=>Number(o.value)===n))$(id).value=String(n);}const d=p.get('date');if(d&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=$('date').min&&d<=$('date').max)$('date').value=d;const t=p.get('by')||p.get('after');if(t&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t))$('after').value=clampTime(t);setTmode(p.has('by')?'arrive':'depart');if(p.get('sort')==='duration')$('sort').value='duration';}
 renderPresets();
 loadParams();
 function opts(){return {origin:Number($('origin').value),destination:Number($('destination').value),date:$('date').value||isoDate(new Date()),after:tmode==='depart'?P.parseTime($('after').value||'00:00'):0,arriveBy:tmode==='arrive'?P.parseTime($('after').value||'23:59'):null,minTransfer:Number($('min-transfer').value),maxWait:Number($('max-wait').value),sort:$('sort').value};}
@@ -80,7 +80,7 @@ $('more').addEventListener('click',()=>{limit+=10;render();});$('slow-more').add
 document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;limit=8;render();}));
 $('results').addEventListener('click',e=>{const btn=e.target.closest('[data-expand]');if(!btn)return;const id=btn.dataset.expand,r=[...result.direct,...result.transfers].find(x=>x.id===id);const el=$('details-'+id);if(el.hidden){el.innerHTML=details(r);el.hidden=false;btn.textContent='收合路線 −';btn.setAttribute('aria-expanded','true');}else{el.hidden=true;btn.textContent='展開路線 ＋';btn.setAttribute('aria-expanded','false');}});
 document.querySelectorAll('[data-tmode]').forEach(b=>b.addEventListener('click',()=>{setTmode(b.dataset.tmode);query();}));
-$('now').addEventListener('click',()=>{const n=new Date();$('date').value=isoDate(n);$('after').value=slot(P.hhmm(n.getHours()*60+n.getMinutes()+29));setTmode('depart');mode='all';query();$('results').scrollIntoView({behavior:'smooth',block:'start'});});
+$('now').addEventListener('click',()=>{const n=new Date();$('date').value=isoDate(n);$('after').value=clampTime(P.hhmm(n.getHours()*60+n.getMinutes()));setTmode('depart');mode='all';query();$('results').scrollIntoView({behavior:'smooth',block:'start'});});
 $('preset-list').addEventListener('click',e=>{const b=e.target.closest('[data-route]');if(!b)return;const [o,d]=b.dataset.route.split('-');$('origin').value=o;$('destination').value=d;mode='all';query();});
 $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(permalink());toast('已複製查詢連結');}catch{toast('請複製瀏覽器網址列的查詢連結');}});
 query();
