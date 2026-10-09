@@ -53,7 +53,7 @@ function card(r,slow=false){
 }
 function render(){
  $('route-title').textContent=P.STATIONS[result.origin]+' → '+P.STATIONS[result.destination];
- $('route-subtitle').textContent=mdText(result.date)+'（週'+WEEK[result.day]+'）'+(result.official?' · 官方逐日時刻表（'+mdText(result.fetched)+' 更新）':result.date?' · 常態週時刻表，官方尚未公布該日班表':'')+' · '+$('after').value+(tmode==='arrive'?' 之前抵達':' 之後出發')+' · 轉乘至少 '+$('min-transfer').value+' 分鐘'+(result.fares&&result.fares.free?' · 單程自由座 NT$'+result.fares.free+'、標準 NT$'+result.fares.standard:'');
+ $('route-subtitle').textContent=mdText(result.date)+'（週'+WEEK[result.day]+'）'+(result.official?' · 官方逐日時刻表（'+mdText(result.fetched)+' 更新）':result.date?' · 常態週時刻表，官方尚未公布該日班表':'')+' · '+$('after').value+(tmode==='arrive'?' 前抵達':' 起出發')+' · 轉乘至少 '+$('min-transfer').value+' 分鐘'+(result.fares&&result.fares.free?' · 單程自由座 NT$'+result.fares.free+'、標準 NT$'+result.fares.standard:'');
  $('benchmark').textContent=result.benchmark===null?'無直達車':P.duration(result.benchmark);
  $('benchmark-note').textContent=result.benchmark===null?'可參考轉乘方案':'全天最短 · '+result.benchmarkTrain+' 車次';
  const arrive=tmode==='arrive';$('earliest-label').textContent=arrive?'最晚出發方案':'最早抵達方案';
