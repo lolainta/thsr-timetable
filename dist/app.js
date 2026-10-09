@@ -16,7 +16,7 @@ const datesText=dates=>{const w=D.daily,all=[];for(let d=new Date(w.from+'T00:00
  return ranges.map(([a,b])=>a===b?mdText(a)+'（'+WEEK[wd(a)]+'）':mdText(a)+'～'+mdText(b)).join('、');};
 const daysText=days=>typeof days[0]==='string'?datesText(days):days.length===7?'每日':days.map(d=>'週'+WEEK[d]).join('、');
 // '10–12 車' / '全車自由座'; empty when the dataset has no car info for this train
-const carsText=cars=>{if(!cars||!cars.length)return '';if(cars.length>=12)return '全車自由座';const r=[];for(const c of cars){const last=r[r.length-1];if(last&&last[1]===c-1)last[1]=c;else r.push([c,c]);}return r.map(([a,b])=>a===b?String(a):a+'–'+b).join('、')+' 車';};
+const carsText=cars=>{if(!cars||!cars.length)return '';if(cars.length>=11)return '全車自由座';/* every car except business car 6 */const r=[];for(const c of cars){const last=r[r.length-1];if(last&&last[1]===c-1)last[1]=c;else r.push([c,c]);}return r.map(([a,b])=>a===b?String(a):a+'–'+b).join('、')+' 車';};
 const isoDate=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 if(D.daily){const w=D.daily;$('data-note').textContent=' 逐日時刻表、自由座車廂與票價：TDX 運輸資料流通服務，'+mdText(w.fetched)+' 更新，涵蓋 '+mdText(w.from)+'～'+mdText(w.to)+'，每日 06:00 自動更新；更遠日期依常態時刻表。';}
 P.STATIONS.forEach((name,i)=>{for(const id of ['origin','destination']){const o=document.createElement('option');o.value=i;o.textContent=name;$(id).append(o);}});
