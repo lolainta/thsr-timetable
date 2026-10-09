@@ -1,6 +1,6 @@
 'use strict';
 const P=window.THSRPlanner,D=window.THSR_DATA,$=id=>document.getElementById(id),WEEK=['','一','二','三','四','五','六','日'];
-let result=null,mode='all',tmode='depart',limit=8,toastTimer;
+let result=null,tmode='depart',limit=8,toastTimer;
 const escapeHTML=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const time=v=>P.hhmm(v)+(v>=1440?' <small class="day-tag">隔日</small>':'');
 const mdText=d=>Number(d.slice(5,7))+'/'+Number(d.slice(8,10));
@@ -60,11 +60,10 @@ function render(){
  const early=[...result.useful].sort(arrive?(a,b)=>b.departure-a.departure||a.duration-b.duration:(a,b)=>a.arrival-b.arrival||a.duration-b.duration)[0]||result.slower[0];
  $('earliest').textContent=early?P.hhmm(arrive?early.departure:early.arrival)+((arrive?early.departure:early.arrival)>=1440?' +1':''):'—';
  $('earliest-note').textContent=early?(early.type==='direct'?early.train:early.first+' → '+early.second)+' · '+P.duration(early.duration):'目前條件無班次';
- const showAll=$('show-all').checked,rows=result.ranked.filter(r=>(mode==='all'||r.type===mode)&&(showAll||!(r.dominated||r.marginal)));
+ const showAll=$('show-all').checked,rows=result.ranked.filter(r=>showAll||!(r.dominated||r.marginal));
  $('result-list').innerHTML=rows.slice(0,limit).map(card).join('');
  $('more').hidden=rows.length<=limit;$('more').textContent='顯示更多班次';
- $('empty').hidden=!!(rows.length||slower.length);
- document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',b.dataset.mode===mode);b.setAttribute('aria-pressed',String(b.dataset.mode===mode));});
+ $('empty').hidden=!!(rows.length||(!showAll&&result.slower.length));
 }
 function details(r){return `<div class="legs">${r.legs.map((leg,i)=>{
  const a=leg.stops.findIndex(s=>s.i===leg.origin),b=leg.stops.findIndex(s=>s.i===leg.destination);const stops=leg.stops.slice(a,b+1).map(s=>P.STATIONS[s.i]).join(' → ');
@@ -73,10 +72,9 @@ $('query-form').addEventListener('submit',e=>{e.preventDefault();query();const t
 $('swap').addEventListener('click',()=>{const x=$('origin').value;$('origin').value=$('destination').value;$('destination').value=x;query();});
 $('sort').addEventListener('change',query);
 $('more').addEventListener('click',()=>{limit+=10;render();});$('show-all').addEventListener('change',()=>{limit=8;render();});
-document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;limit=8;render();}));
 $('results').addEventListener('click',e=>{const btn=e.target.closest('[data-expand]');if(!btn)return;const id=btn.dataset.expand,r=[...result.direct,...result.transfers].find(x=>x.id===id);const el=$('details-'+id);if(el.hidden){el.innerHTML=details(r);el.hidden=false;btn.textContent='收合路線 −';btn.setAttribute('aria-expanded','true');}else{el.hidden=true;btn.textContent='展開路線 ＋';btn.setAttribute('aria-expanded','false');}});
 $('tmode').addEventListener('change',()=>setTmode($('tmode').value));
-$('now').addEventListener('click',()=>{const n=new Date();$('date').value=isoDate(n);$('after').value=clampTime(P.hhmm(n.getHours()*60+n.getMinutes()));setTmode('depart');mode='all';query();$('results').scrollIntoView({behavior:'smooth',block:'start'});});
-$('preset-list').addEventListener('click',e=>{const b=e.target.closest('[data-route]');if(!b)return;const [o,d]=b.dataset.route.split('-');$('origin').value=o;$('destination').value=d;mode='all';query();});
+$('now').addEventListener('click',()=>{const n=new Date();$('date').value=isoDate(n);$('after').value=clampTime(P.hhmm(n.getHours()*60+n.getMinutes()));setTmode('depart');query();$('results').scrollIntoView({behavior:'smooth',block:'start'});});
+$('preset-list').addEventListener('click',e=>{const b=e.target.closest('[data-route]');if(!b)return;const [o,d]=b.dataset.route.split('-');$('origin').value=o;$('destination').value=d;query();});
 $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(permalink());toast('已複製查詢連結');}catch{toast('請複製瀏覽器網址列的查詢連結');}});
 query();
