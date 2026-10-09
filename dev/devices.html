@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><title>裝置預覽</title>
+<style>
+body{margin:0;padding:16px;background:#222;color:#ddd;font:13px system-ui,sans-serif}
+form{display:flex;gap:10px;align-items:center;margin-bottom:14px}input{font:inherit;padding:4px 8px;width:420px}
+.row{display:flex;gap:18px;align-items:flex-start;overflow-x:auto;padding-bottom:16px}
+figure{margin:0;flex-shrink:0}figcaption{margin-bottom:6px;color:#9ab}iframe{border:0;background:#fff;border-radius:12px;box-shadow:0 10px 40px #0008}
+</style></head><body>
+<form onsubmit="return go()"><label>網址 <input id="u" value="../dist/index.html?from=1&to=9&date=2026-10-11&after=18:00"></label><button>載入</button><span>寬度依序：320 / 375 / 390 / 430 / 768 / 1024。本機看 dist，或貼 https://thsr.lolainta.tw/ 看線上版。</span></form>
+<div class="row" id="row"></div>
+<script>
+// ponytail: iframes only emulate width, not touch or the iOS Safari engine; open this file in Safari for WebKit rendering.
+const sizes=[[320,'iPhone SE'],[375,'iPhone 13 mini'],[390,'iPhone 15'],[430,'iPhone 15 Pro Max'],[768,'iPad 直立'],[1024,'iPad 橫放']];
+function go(){const u=document.getElementById('u').value;document.getElementById('row').innerHTML=sizes.map(([w,n])=>`<figure><figcaption>${n} · ${w}px</figcaption><iframe src="${u}" width="${w}" height="900"></iframe></figure>`).join('');return false;}
+go();
+</script></body></html>

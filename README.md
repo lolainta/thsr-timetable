@@ -51,9 +51,11 @@ The regular weekly timetable in `trips` is edited by hand when THSRC changes it.
 ## Development
 
 ```sh
-node verify.cjs        # 938 checks across all station pairs and weekdays
+node verify.cjs        # route, boundary and frontier checks across all station pairs and weekdays
 npx serve dist         # or any static file server
 ```
+
+`dev/devices.html` shows the site side by side at six phone and tablet widths; open it in Safari to see WebKit rendering, or paste the live URL into its address box.
 
 ## Deployment
 
