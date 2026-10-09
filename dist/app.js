@@ -41,7 +41,7 @@ function query(){limit=8;slowLimit=6;result=P.search(D,opts());if(!result.error)
 function card(r,slow=false){
  const origin=P.STATIONS[result.origin],dest=P.STATIONS[result.destination],isT=r.type==='transfer';
  const badge=slow?'較慢／較不實用':isT?(r.turnback?'折返轉乘':'一次轉乘'):'直達';
- let delta=r.delta===null?'此區間無直達車':r.delta<0?'比最快直達省 '+(-r.delta)+' 分':r.delta===0?'與最快直達車程相同':'比最快直達多 '+r.delta+' 分';
+ let delta=r.delta===null?'此區間無直達車':r.delta<0?'比最快直達少坐 '+(-r.delta)+' 分':r.delta===0?'與最快直達坐一樣久':'比最快直達多坐 '+r.delta+' 分';
  let compare='直達無需換車，按展開路線查看停靠站。';
  if(isT){
   if(r.nextDirect){const n=r.nextDirect;const c=r.arrivalGain>0?'<span class="gain">比下一班直達早到 '+r.arrivalGain+' 分</span>':r.arrivalGain===0?'<span>與下一班直達同時抵達</span>':'<span class="loss">比下一班直達晚到 '+(-r.arrivalGain)+' 分</span>';compare=c+'<span>直達 '+escapeHTML(n.train)+'｜'+P.hhmm(n.departure)+' → '+P.hhmm(n.arrival)+(n.arrival>=1440?'（隔日）':'')+'</span>';}
