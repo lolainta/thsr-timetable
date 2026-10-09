@@ -1,6 +1,6 @@
 'use strict';
 const P=window.THSRPlanner,D=window.THSR_DATA,$=id=>document.getElementById(id),WEEK=['','一','二','三','四','五','六','日'];
-let result=null,mode='all',limit=8,slowLimit=6,toastTimer;
+let result=null,mode='all',tmode='depart',limit=8,slowLimit=6,toastTimer;
 const escapeHTML=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const time=v=>P.hhmm(v)+(v>=1440?' <small class="day-tag">隔日</small>':'');
 const mdText=d=>Number(d.slice(5,7))+'/'+Number(d.slice(8,10));
@@ -24,12 +24,20 @@ $('origin').value='1';$('destination').value='9';
 // Departure picker holds half-hour slots (static in index.html); default to today and the next slot.
 const slot=t=>P.hhmm(Math.min(1410,Math.max(330,Math.floor(P.parseTime(t)/30)*30)));  // slots run 05:30–23:30; first train leaves 05:50
 const now=new Date();$('date').value=isoDate(now);$('after').value=slot(P.hhmm(now.getHours()*60+now.getMinutes()+29));
-function loadParams(){const p=new URLSearchParams(location.search),ints={from:['origin',0,11],to:['destination',0,11],min:['min-transfer',5,20],wait:['max-wait',20,1440]};for(const [key,[id,min,max]] of Object.entries(ints)){if(!p.has(key))continue;const n=Number(p.get(key));if(Number.isInteger(n)&&n>=min&&n<=max&&[...$(id).options].some(o=>Number(o.value)===n))$(id).value=String(n);}const d=p.get('date');if(d&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=$('date').min&&d<=$('date').max)$('date').value=d;const t=p.get('after');if(t&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t))$('after').value=slot(t);if(p.get('sort')==='duration')$('sort').value='duration';}
+const SAMPLES=[[1,9],[4,11],[2,7],[11,1]];
+const recent=()=>{try{return JSON.parse(localStorage.getItem('recent')||'[]');}catch{return [];}};
+function remember(o,e){try{const r=recent().filter(x=>!(x[0]===o&&x[1]===e));r.unshift([o,e]);localStorage.setItem('recent',JSON.stringify(r.slice(0,4)));}catch{}renderPresets();}
+function renderPresets(){const r=recent(),list=r.length?r:SAMPLES;$('presets-label').textContent=r.length?'最近查詢':'試試看';$('preset-list').innerHTML=list.map(([o,e])=>`<button type="button" data-route="${o}-${e}">${P.STATIONS[o]} → ${P.STATIONS[e]}</button>`).join('');}
+function setTmode(m){tmode=m;document.querySelectorAll('[data-tmode]').forEach(b=>{const on=b.dataset.tmode===m;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
+ // Sort choices follow the mode: depart → earliest arrival first, arrive-by → latest departure first.
+ const sort=$('sort'),opt=(v,off)=>{const o=sort.querySelector('[value='+v+']');o.hidden=off;o.disabled=off;};opt('arrival',m==='arrive');opt('departure',m==='depart');  /* iOS ignores hidden on <option>, so disable too */if(sort.value==='arrival'&&m==='arrive')sort.value='departure';if(sort.value==='departure'&&m==='depart')sort.value='arrival';}
+function loadParams(){const p=new URLSearchParams(location.search),ints={from:['origin',0,11],to:['destination',0,11],min:['min-transfer',5,20],wait:['max-wait',20,1440]};for(const [key,[id,min,max]] of Object.entries(ints)){if(!p.has(key))continue;const n=Number(p.get(key));if(Number.isInteger(n)&&n>=min&&n<=max&&[...$(id).options].some(o=>Number(o.value)===n))$(id).value=String(n);}const d=p.get('date');if(d&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=$('date').min&&d<=$('date').max)$('date').value=d;const t=p.get('by')||p.get('after');if(t&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t))$('after').value=slot(t);setTmode(p.has('by')?'arrive':'depart');if(p.get('sort')==='duration')$('sort').value='duration';}
+renderPresets();
 loadParams();
-function opts(){return {origin:Number($('origin').value),destination:Number($('destination').value),date:$('date').value||isoDate(new Date()),after:P.parseTime($('after').value||'00:00'),minTransfer:Number($('min-transfer').value),maxWait:Number($('max-wait').value),sort:$('sort').value};}
-function permalink(){const o=opts(),url=new URL(location.href);url.search='';const fields={from:o.origin,to:o.destination,date:o.date,after:P.hhmm(o.after),min:o.minTransfer,wait:o.maxWait,sort:o.sort};for(const [k,v] of Object.entries(fields))url.searchParams.set(k,v);return url.href;}
+function opts(){return {origin:Number($('origin').value),destination:Number($('destination').value),date:$('date').value||isoDate(new Date()),after:tmode==='depart'?P.parseTime($('after').value||'00:00'):0,arriveBy:tmode==='arrive'?P.parseTime($('after').value||'23:59'):null,minTransfer:Number($('min-transfer').value),maxWait:Number($('max-wait').value),sort:$('sort').value};}
+function permalink(){const o=opts(),url=new URL(location.href);url.search='';const fields={from:o.origin,to:o.destination,date:o.date,[tmode==='arrive'?'by':'after']:P.hhmm(tmode==='arrive'?o.arriveBy:o.after),min:o.minTransfer,wait:o.maxWait,sort:o.sort};for(const [k,v] of Object.entries(fields))url.searchParams.set(k,v);return url.href;}
 function toast(t){$('toast').textContent=t;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,2600);}
-function query(){limit=8;slowLimit=6;result=P.search(D,opts());if(result.error){$('message').textContent=result.error;$('message').hidden=false;$('results').hidden=true;return;}$('message').hidden=true;$('results').hidden=false;try{history.replaceState(null,'',permalink());}catch{}render();}
+function query(){limit=8;slowLimit=6;result=P.search(D,opts());if(!result.error)remember(result.origin,result.destination);if(result.error){$('message').textContent=result.error;$('message').hidden=false;$('results').hidden=true;return;}$('message').hidden=true;$('results').hidden=false;try{history.replaceState(null,'',permalink());}catch{}render();}
 function card(r,slow=false){
  const origin=P.STATIONS[result.origin],dest=P.STATIONS[result.destination],isT=r.type==='transfer';
  const badge=slow?'較慢／較不實用':isT?(r.turnback?'折返轉乘':'一次轉乘'):'直達';
@@ -45,11 +53,12 @@ function card(r,slow=false){
 }
 function render(){
  $('route-title').textContent=P.STATIONS[result.origin]+' → '+P.STATIONS[result.destination];
- $('route-subtitle').textContent=mdText(result.date)+'（週'+WEEK[result.day]+'）'+(result.official?' · 官方逐日時刻表（'+mdText(result.fetched)+' 更新）':result.date?' · 常態週時刻表，官方尚未公布該日班表':'')+' · '+$('after').value+' 之後出發 · 轉乘至少 '+$('min-transfer').value+' 分鐘'+(result.fares&&result.fares.free?' · 單程自由座 NT$'+result.fares.free+'、標準 NT$'+result.fares.standard:'');
+ $('route-subtitle').textContent=mdText(result.date)+'（週'+WEEK[result.day]+'）'+(result.official?' · 官方逐日時刻表（'+mdText(result.fetched)+' 更新）':result.date?' · 常態週時刻表，官方尚未公布該日班表':'')+' · '+$('after').value+(tmode==='arrive'?' 之前抵達':' 之後出發')+' · 轉乘至少 '+$('min-transfer').value+' 分鐘'+(result.fares&&result.fares.free?' · 單程自由座 NT$'+result.fares.free+'、標準 NT$'+result.fares.standard:'');
  $('benchmark').textContent=result.benchmark===null?'無直達車':P.duration(result.benchmark);
  $('benchmark-note').textContent=result.benchmark===null?'可參考轉乘方案':'全天最短 · '+result.benchmarkTrain+' 車次';
- const early=[...result.useful].sort((a,b)=>a.arrival-b.arrival||a.duration-b.duration)[0]||result.slower[0];
- $('earliest').textContent=early?P.hhmm(early.arrival)+(early.arrival>=1440?' +1':''):'—';
+ const arrive=tmode==='arrive';$('earliest-label').textContent=arrive?'最晚出發方案':'最早抵達方案';
+ const early=[...result.useful].sort(arrive?(a,b)=>b.departure-a.departure||a.duration-b.duration:(a,b)=>a.arrival-b.arrival||a.duration-b.duration)[0]||result.slower[0];
+ $('earliest').textContent=early?P.hhmm(arrive?early.departure:early.arrival)+((arrive?early.departure:early.arrival)>=1440?' +1':''):'—';
  $('earliest-note').textContent=early?(early.type==='direct'?early.train:early.first+' → '+early.second)+' · '+P.duration(early.duration):'目前條件無班次';
  $('transfer-count').textContent=result.transfers.length+' 組';
  const rows=result.useful.filter(r=>mode==='all'||r.type===mode),slower=mode==='direct'?[]:result.slower;
@@ -70,7 +79,8 @@ $('sort').addEventListener('change',query);
 $('more').addEventListener('click',()=>{limit+=10;render();});$('slow-more').addEventListener('click',()=>{slowLimit+=10;render();});
 document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;limit=8;render();}));
 $('results').addEventListener('click',e=>{const btn=e.target.closest('[data-expand]');if(!btn)return;const id=btn.dataset.expand,r=[...result.direct,...result.transfers].find(x=>x.id===id);const el=$('details-'+id);if(el.hidden){el.innerHTML=details(r);el.hidden=false;btn.textContent='收合路線 −';btn.setAttribute('aria-expanded','true');}else{el.hidden=true;btn.textContent='展開路線 ＋';btn.setAttribute('aria-expanded','false');}});
-const presets={taipei:{from:1,to:9,time:'18:00'},hsinchu:{from:4,to:11,time:'07:00'},banqiao:{from:2,to:7,time:'06:00'},north:{from:11,to:1,time:'07:00'}};
-document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{const p=presets[b.dataset.preset];$('origin').value=p.from;$('destination').value=p.to;$('after').value=p.time;mode='all';query();}));
+document.querySelectorAll('[data-tmode]').forEach(b=>b.addEventListener('click',()=>{setTmode(b.dataset.tmode);query();}));
+$('now').addEventListener('click',()=>{const n=new Date();$('date').value=isoDate(n);$('after').value=slot(P.hhmm(n.getHours()*60+n.getMinutes()+29));setTmode('depart');mode='all';query();$('results').scrollIntoView({behavior:'smooth',block:'start'});});
+$('preset-list').addEventListener('click',e=>{const b=e.target.closest('[data-route]');if(!b)return;const [o,d]=b.dataset.route.split('-');$('origin').value=o;$('destination').value=d;mode='all';query();});
 $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(permalink());toast('已複製查詢連結');}catch{toast('請複製瀏覽器網址列的查詢連結');}});
 query();
