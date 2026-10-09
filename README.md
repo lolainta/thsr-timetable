@@ -9,7 +9,7 @@ Compare direct and one-change routes on Taiwan High Speed Rail, for every statio
 - All twelve stations, both directions, any date. Pick a travel date like the official booking site.
 - Dates within the next four weeks use THSRC's official per-date timetable, refreshed daily by GitHub Actions, so holiday extra trains are included. Later dates fall back to the weekly regular timetable.
 - Direct trains and single transfers, including turn-back routes that overshoot the destination (for example ride to Zuoying, then return north).
-- Minimum connection time of five minutes, adjustable; optional cap on waiting time.
+- Minimum connection time of five minutes, adjustable; waits over 60 minutes are not considered.
 - Each transfer is benchmarked against the fastest direct train of the day and the next direct train leaving at or after it.
 - Transfers that are at least fifteen minutes slower than the benchmark, or beaten by a later direct train, are collapsed into a separate section.
 - Time condition in two modes: depart after, or arrive by (results then rank by latest departure). A 現在出發 button sets today and the current minute.

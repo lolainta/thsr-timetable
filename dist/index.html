@@ -15,7 +15,7 @@
 <label class="field">出發日期<span class="box"><input id="date" name="date" type="date" min="2026-02-02" max="2026-12-31" required></span></label>
 <div class="field"><div class="mode" role="group" aria-label="時間條件"><button type="button" data-tmode="depart" class="active" aria-pressed="true">出發時間</button><button type="button" data-tmode="arrive" aria-pressed="false">抵達時間</button></div><span class="box"><input id="after" name="after" type="time" aria-label="時間" min="05:30" max="23:59" required></span></div>
 <button class="submit" type="submit">查詢班次 <span aria-hidden="true">→</span></button>
-<div class="query-options"><button type="button" id="now" class="now"><span aria-hidden="true">◉</span> 現在出發</button><label>至少轉乘 <select id="min-transfer"><option value="5">5 分鐘</option><option value="7">7 分鐘</option><option value="10">10 分鐘</option><option value="15">15 分鐘</option><option value="20">20 分鐘</option></select></label><label>最多等車 <select id="max-wait"><option value="20">20 分鐘</option><option value="30" selected>30 分鐘</option><option value="45">45 分鐘</option><option value="60">60 分鐘</option><option value="1440">不限</option></select></label></div>
+<div class="query-options"><button type="button" id="now" class="now"><span aria-hidden="true">◉</span> 現在出發</button><label>轉乘預留 <select id="min-transfer"><option value="5">5 分鐘</option><option value="7">7 分鐘</option><option value="10">10 分鐘</option><option value="15">15 分鐘</option><option value="20">20 分鐘</option></select></label></div>
 </form></section>
 <div class="presets" aria-label="常用路線"><span id="presets-label">試試看</span><span id="preset-list"></span></div>
 <div id="message" class="message" role="alert" hidden></div>
