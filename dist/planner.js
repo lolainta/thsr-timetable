@@ -60,7 +60,7 @@ const arriveBy=opts.arriveBy??null;  // arrive-by mode: keep rows arriving by th
  const cands=[...direct,...transfers].sort((a,b)=>a.arrival-b.arrival||b.departure-a.departure||(a.type==='direct'?-1:b.type==='direct'?1:0)||((a.turnback?1:0)-(b.turnback?1:0))||(b.wait||0)-(a.wait||0));
  let best=null;
  for(const r of cands){
-  if(r.type==='transfer'){r.dominated=!!best&&best.departure>=r.departure;r.dominatedBy=r.dominated?{type:best.type,train:best.train,first:best.first,second:best.second}:null;if(r.dominated)continue;}
+  if(r.type==='transfer'){r.dominated=!!best&&best.departure>=r.departure;r.dominatedBy=r.dominated?{type:best.type,train:best.train,first:best.first,second:best.second,departure:best.departure,arrival:best.arrival}:null;if(r.dominated)continue;}
   if(!best||r.departure>best.departure)best=r;
  }
  const sort=opts.sort==='duration'?(a,b)=>a.duration-b.duration||a.arrival-b.arrival||a.departure-b.departure:opts.sort==='departure'?(a,b)=>b.departure-a.departure||a.duration-b.duration||(a.type==='direct'?-1:1):(a,b)=>a.arrival-b.arrival||a.duration-b.duration||(a.type==='direct'?-1:1);
