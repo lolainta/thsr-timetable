@@ -1,52 +1,51 @@
 # THSR Transfer Planner
 
-Compare direct and one-change routes on Taiwan High Speed Rail, for every station pair, every weekday, entirely in the browser.
+Compare direct trains with one-change routes on Taiwan High Speed Rail, for any station pair and any date, entirely in the browser.
 
 **Live site:** https://thsr.lolainta.tw/
 
 ## Features
 
-- All twelve stations, both directions, any date. Pick a travel date like the official booking site.
-- Dates within the next four weeks use THSRC's official per-date timetable, refreshed daily by GitHub Actions, so holiday extra trains are included. Later dates fall back to the weekly regular timetable.
-- Direct trains and single transfers, including turn-back routes that overshoot the destination (for example ride to Zuoying, then return north).
-- Minimum connection time of five minutes, adjustable; waits over 60 minutes are not considered.
-- Each transfer is benchmarked against the fastest direct train of the day and the next direct train leaving at or after it.
-- The list is a Pareto frontier over all options: a transfer is hidden by default when any direct train or other transfer leaves at the same time or later and arrives at the same time or earlier, or when it is much slower than the day's fastest direct yet arrives less than five minutes before the next one. A checkbox shows the hidden ones in place, each naming the option that covers it; the wording stays factual since a direct train is an advantage in itself.
-- Time condition in two modes: depart after, or arrive by (results then rank by latest departure). A 現在出發 button sets today and the current minute.
-- Shareable query links (`after=` or `by=`), swap-stations button, and recent-route chips kept in the browser.
+- Pick a travel date like the official booking site. The next four weeks use THSRC's official per-date timetable from TDX, refreshed every morning, so holiday extra trains are included. Later dates fall back to the weekly regular timetable and the page says so.
+- Direct trains and one-change routes with the change at any station, in either direction, including turn-backs that overshoot the destination and come back. Turn-back cards carry a ticket warning.
+- Two time modes: 出發時間 (leave at or after) and 抵達時間 (arrive by, ranked by latest departure). 現在出發 sets today and the current minute.
+- The list is a Pareto frontier over all options. A transfer is hidden by default when any direct train or other transfer leaves at the same time or later and arrives at the same time or earlier. A checkbox shows the hidden ones in place, each stating the exact difference, e.g. "直達 673 晚 10 分出發、同時抵達". Direct trains are always shown; the wording never says one choice is better.
+- Each transfer shows how much earlier it arrives than the next direct train leaving at or after it.
+- Each leg shows its non-reserved car numbers from TDX, or 未公布 when TDX has none, and the route subtitle shows the adult one-way fare.
+- Shareable links (`after=` or `by=`), swap button, recent routes remembered in the browser, and a footer version stamp that links to the deployed commit.
 
-No build step, server, or third-party requests. Static HTML, CSS and JavaScript only.
+No build step, server, or third-party requests at runtime. Static HTML, CSS and JavaScript only.
 
 ## Layout
 
 | Path | Purpose |
 |---|---|
 | `dist/` | Deployable site (HTML, CSS, JS, data, font, `CNAME`) |
-| `data.json` | Canonical timetable dataset; `dist/data.js` is the same data wrapped for the browser |
-| `verify.cjs` | Route and boundary checks run before every deploy |
-| `scripts/collect.py` | Fetches the official per-date timetable from TDX (stdlib only) |
-| `.github/workflows/pages.yml` | GitHub Pages deployment; stamps the commit hash into the footer and asset URLs (cache busting) |
+| `data.json` | Canonical dataset; `dist/data.js` is the same data wrapped for the browser |
+| `scripts/collect.py` | Fetches the per-date timetable, non-reserved cars and fares from TDX (stdlib only) |
+| `verify.cjs` | Route, boundary and frontier checks run before every deploy |
+| `dev/devices.html` | Side-by-side preview at six phone and tablet widths |
+| `.github/workflows/pages.yml` | Daily data refresh and GitHub Pages deployment |
+| `.github/ISSUE_TEMPLATE/` | Feature-wish and bug-report forms |
+| `LICENSE` | MIT, code only |
 
 ## Data
 
-`trips` covers the 214 train numbers and 1,134 weekly services of the THSRC regular timetable effective 2026-02-02. Arrival variants are separated by operating weekday.
+`daily` holds the official per-date timetable for the fetch window (`from`/`to`, today plus 28 days, which is as far as TDX publishes). Trips with identical schedules and car configurations are merged and carry the list of dates they run. Each trip has `cars` (non-reserved car numbers, empty when unpublished), and `daily.fares` holds adult one-way prices per station pair.
 
-`daily` holds the official per-date timetable, each train's non-reserved car numbers, and the adult one-way fare table, for the fetch window (`from`/`to`, usually today plus 28 days, which is as far as TDX publishes). Trips with identical schedules are merged and carry the list of dates they run. `scripts/collect.py` collects it from TDX's THSR DailyTimetable API, one request per date, with every stop's arrival and departure.
+`trips` is the weekly regular timetable effective 2026-02-02, 214 train numbers and 1,134 weekly services, used only for dates beyond the window. It was compiled from THSRC's site with every stop's arrival queried explicitly and checked for 2026-10-13 through 2026-10-19. Terminal departures are `null`; times above 1440 are next-day arrivals.
 
-Official query responses were collected for 2026-10-13 through 2026-10-19. Each stop's arrival was queried explicitly rather than estimated from dwell times. Terminal departure values are `null`. Times above 1440 minutes indicate next-day arrivals.
+The daily window refreshes itself: the Pages workflow runs `scripts/collect.py` at 06:00 Taipei time, commits the new `data.json` and `dist/data.js` when they changed, and redeploys. It needs the repository secrets `TDX_CLIENT_ID` and `TDX_CLIENT_SECRET` (free account at https://tdx.transportdata.tw/). Run it locally with the same two variables in the environment.
 
-Sources:
-
-- [THSRC timetable download](https://www.thsrc.com.tw/Attachment/Download?id=b5e78f70-fa6d-4f75-8f31-a13387d7ea88&pageID=a3b630bb-1066-4352-a1ef-58c7b4e8ef7c)
-- [THSRC timetable page](https://www.thsrc.com.tw/ArticleContent/a3b630bb-1066-4352-a1ef-58c7b4e8ef7c)
-
-The regular weekly timetable in `trips` is edited by hand when THSRC changes it. The `daily` window is refreshed automatically: the Pages workflow runs `scripts/collect.py` every day, commits the new `data.json` and `dist/data.js`, and redeploys. It needs the repository secrets `TDX_CLIENT_ID` and `TDX_CLIENT_SECRET` (free account at https://tdx.transportdata.tw/). Run it locally with the same two variables in the environment: `python3 scripts/collect.py`.
+Sources: [THSRC timetable page](https://www.thsrc.com.tw/ArticleContent/a3b630bb-1066-4352-a1ef-58c7b4e8ef7c), [TDX THSR APIs](https://tdx.transportdata.tw/).
 
 ## Route comparison rules
 
-- Identical train pairs reachable via several change stations are deduplicated, preferring Taichung, otherwise the larger connection buffer.
-- The duration benchmark is the fastest direct train across the whole selected weekday.
-- The "next direct" comparison is the direct train with the earliest arrival among those departing at or after the transfer route's departure.
+- Minimum connection time 5 minutes, adjustable to 20. Waits over 60 minutes are not considered.
+- One train pair reachable via several change stations is listed once, preferring Taichung, otherwise the larger connection buffer.
+- "Next direct" is the direct train with the earliest arrival among those departing at or after the transfer's departure.
+- Frontier: candidates are sorted by arrival, then latest departure; ties prefer direct, then a forward change, then the larger buffer. A transfer is hidden when an already accepted candidate departs at the same time or later.
+- Marginal: a transfer at least 15 minutes slower than the day's fastest direct that arrives less than 5 minutes before the next direct is also hidden.
 
 ## Development
 
@@ -55,15 +54,15 @@ node verify.cjs        # route, boundary and frontier checks across all station 
 npx serve dist         # or any static file server
 ```
 
-`dev/devices.html` shows the site side by side at six phone and tablet widths; open it in Safari to see WebKit rendering, or paste the live URL into its address box.
+`dev/devices.html` shows the site side by side at six widths; open it in Safari for WebKit rendering, or paste the live URL into its address box. Native date and time inputs are sized by a wrapper, never directly, because iOS misplaces their value otherwise.
 
 ## Deployment
 
-Pushes to `main`, the daily schedule, and manual dispatch all run `.github/workflows/pages.yml`. Scheduled and manual runs first refetch the timetable and commit it; every run then performs the syntax and route checks and publishes `dist/` to GitHub Pages. The custom domain is set by `dist/CNAME`.
+Pushes to `main`, the daily schedule, and manual dispatch all run `.github/workflows/pages.yml`. Scheduled and manual runs refetch the data first; every run then checks syntax and routes, stamps the commit hash into the footer and asset URLs (so a cached script can never mismatch the page), and publishes `dist/`. The custom domain is set by `dist/CNAME`.
 
 ## Feedback
 
-Feature wishes and bug reports go to [GitHub Issues](https://github.com/lolainta/thsr-timetable/issues/new/choose); the templates ask for the query link and the page version shown in the footer.
+Feature wishes and bug reports go to [GitHub Issues](https://github.com/lolainta/thsr-timetable/issues/new/choose); the forms ask for the query link and the page version shown in the footer.
 
 ## License
 
@@ -71,4 +70,4 @@ Code is released under the [MIT License](LICENSE). The timetable, fare and seati
 
 ## Disclaimer
 
-This is an independent project and is not affiliated with Taiwan High Speed Rail Corporation. Delays, seat availability and special-date timetables must be confirmed on the official site.
+This is an independent project and is not affiliated with Taiwan High Speed Rail Corporation. Delays, seat availability and same-day changes must be confirmed on the official site.
