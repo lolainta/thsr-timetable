@@ -11,7 +11,7 @@ Compare direct and one-change routes on Taiwan High Speed Rail, for every statio
 - Direct trains and single transfers, including turn-back routes that overshoot the destination (for example ride to Zuoying, then return north).
 - Minimum connection time of five minutes, adjustable; waits over 60 minutes are not considered.
 - Each transfer is benchmarked against the fastest direct train of the day and the next direct train leaving at or after it.
-- The main list is a Pareto frontier over all options: a transfer is collapsed when any direct train or other transfer leaves at the same time or later and arrives at the same time or earlier, or when it is much slower than the day's fastest direct yet arrives less than five minutes before the next one. Each collapsed card names the option that beats it.
+- The list is a Pareto frontier over all options: a transfer is hidden by default when any direct train or other transfer leaves at the same time or later and arrives at the same time or earlier, or when it is much slower than the day's fastest direct yet arrives less than five minutes before the next one. A checkbox shows the hidden ones in place, each naming the option that beats it.
 - Time condition in two modes: depart after, or arrive by (results then rank by latest departure). A 現在出發 button sets today and the current minute.
 - Shareable query links (`after=` or `by=`), swap-stations button, and recent-route chips kept in the browser.
 

@@ -67,7 +67,8 @@ const arriveBy=opts.arriveBy??null;  // arrive-by mode: keep rows arriving by th
  const slower=transfers.filter(t=>t.dominated||t.marginal).sort(sort);
  const useful=[...direct,...transfers.filter(t=>!t.dominated&&!t.marginal)].sort(sort);
  const fares=data.daily&&data.daily.fares?(data.daily.fares[origin+'-'+destination]||data.daily.fares[destination+'-'+origin]||null):null;
- return {origin,destination,day,date,arriveBy,official:!!official,fares,fetched:data.daily?data.daily.fetched:null,window:data.daily?[data.daily.from,data.daily.to]:null,direct:direct.sort(sort),transfers:transfers.sort(sort),useful,slower,benchmark,benchmarkTrain:directAll.find(x=>x.duration===benchmark)?.train,trains:trips.length};
+ const ranked=[...direct,...transfers].sort(sort);
+ return {origin,destination,day,date,arriveBy,official:!!official,ranked,fares,fetched:data.daily?data.daily.fetched:null,window:data.daily?[data.daily.from,data.daily.to]:null,direct:direct.sort(sort),transfers:transfers.sort(sort),useful,slower,benchmark,benchmarkTrain:directAll.find(x=>x.duration===benchmark)?.train,trains:trips.length};
 }
 const api={STATIONS,hhmm,duration,parseTime,search};global.THSRPlanner=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

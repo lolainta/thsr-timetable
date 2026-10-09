@@ -1,6 +1,6 @@
 'use strict';
 const P=window.THSRPlanner,D=window.THSR_DATA,$=id=>document.getElementById(id),WEEK=['','一','二','三','四','五','六','日'];
-let result=null,mode='all',tmode='depart',limit=8,slowLimit=6,toastTimer;
+let result=null,mode='all',tmode='depart',limit=8,toastTimer;
 const escapeHTML=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const time=v=>P.hhmm(v)+(v>=1440?' <small class="day-tag">隔日</small>':'');
 const mdText=d=>Number(d.slice(5,7))+'/'+Number(d.slice(8,10));
@@ -28,7 +28,7 @@ const SAMPLES=[[1,9],[4,11],[2,7],[11,1]];
 const recent=()=>{try{return JSON.parse(localStorage.getItem('recent')||'[]');}catch{return [];}};
 function remember(o,e){try{const r=recent().filter(x=>!(x[0]===o&&x[1]===e));r.unshift([o,e]);localStorage.setItem('recent',JSON.stringify(r.slice(0,4)));}catch{}renderPresets();}
 function renderPresets(){const r=recent(),list=r.length?r:SAMPLES;$('presets-label').textContent=r.length?'最近查詢':'試試看';$('preset-list').innerHTML=list.map(([o,e])=>`<button type="button" data-route="${o}-${e}">${P.STATIONS[o]} → ${P.STATIONS[e]}</button>`).join('');}
-function setTmode(m){tmode=m;document.querySelectorAll('[data-tmode]').forEach(b=>{const on=b.dataset.tmode===m;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
+function setTmode(m){tmode=m;$('tmode').value=m;
  // Sort choices follow the mode: depart → earliest arrival first, arrive-by → latest departure first.
  const sort=$('sort'),opt=(v,off)=>{const o=sort.querySelector('[value='+v+']');o.hidden=off;o.disabled=off;};opt('arrival',m==='arrive');opt('departure',m==='depart');  /* iOS ignores hidden on <option>, so disable too */if(sort.value==='arrival'&&m==='arrive')sort.value='departure';if(sort.value==='departure'&&m==='depart')sort.value='arrival';}
 function loadParams(){const p=new URLSearchParams(location.search),ints={from:['origin',0,11],to:['destination',0,11],min:['min-transfer',5,20]};for(const [key,[id,min,max]] of Object.entries(ints)){if(!p.has(key))continue;const n=Number(p.get(key));if(Number.isInteger(n)&&n>=min&&n<=max&&[...$(id).options].some(o=>Number(o.value)===n))$(id).value=String(n);}const d=p.get('date');if(d&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=$('date').min&&d<=$('date').max)$('date').value=d;const t=p.get('by')||p.get('after');if(t&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t))$('after').value=clampTime(t);setTmode(p.has('by')?'arrive':'depart');if(p.get('sort')==='duration')$('sort').value='duration';}
@@ -37,9 +37,9 @@ loadParams();
 function opts(){return {origin:Number($('origin').value),destination:Number($('destination').value),date:$('date').value||isoDate(new Date()),after:tmode==='depart'?P.parseTime($('after').value||'00:00'):0,arriveBy:tmode==='arrive'?P.parseTime($('after').value||'23:59'):null,minTransfer:Number($('min-transfer').value),maxWait:60,sort:$('sort').value};/* ponytail: wait cap fixed at 60; longer waits are always slower than a direct and land in the collapsed section */}
 function permalink(){const o=opts(),url=new URL(location.href);url.search='';const fields={from:o.origin,to:o.destination,date:o.date,[tmode==='arrive'?'by':'after']:P.hhmm(tmode==='arrive'?o.arriveBy:o.after),min:o.minTransfer,sort:o.sort};for(const [k,v] of Object.entries(fields))url.searchParams.set(k,v);return url.href;}
 function toast(t){$('toast').textContent=t;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,2600);}
-function query(){limit=8;slowLimit=6;result=P.search(D,opts());if(!result.error)remember(result.origin,result.destination);if(result.error){$('message').textContent=result.error;$('message').hidden=false;$('results').hidden=true;return;}$('message').hidden=true;$('results').hidden=false;try{history.replaceState(null,'',permalink());}catch{}render();}
-function card(r,slow=false){
- const origin=P.STATIONS[result.origin],dest=P.STATIONS[result.destination],isT=r.type==='transfer';
+function query(){limit=8;result=P.search(D,opts());if(!result.error)remember(result.origin,result.destination);if(result.error){$('message').textContent=result.error;$('message').hidden=false;$('results').hidden=true;return;}$('message').hidden=true;$('results').hidden=false;try{history.replaceState(null,'',permalink());}catch{}render();}
+function card(r){
+ const origin=P.STATIONS[result.origin],dest=P.STATIONS[result.destination],isT=r.type==='transfer',slow=!!(r.dominated||r.marginal);
  const better=r.dominatedBy?(r.dominatedBy.type==='direct'?'直達 '+escapeHTML(r.dominatedBy.train):escapeHTML(r.dominatedBy.first)+'→'+escapeHTML(r.dominatedBy.second)):'';
  const badge=slow?(r.dominated?'有更好的方案':'只早幾分鐘'):isT?(r.turnback?'折返轉乘':'一次轉乘'):'直達';
  let compare='直達無需換車，按展開路線查看停靠站。';
@@ -61,12 +61,10 @@ function render(){
  $('earliest').textContent=early?P.hhmm(arrive?early.departure:early.arrival)+((arrive?early.departure:early.arrival)>=1440?' +1':''):'—';
  $('earliest-note').textContent=early?(early.type==='direct'?early.train:early.first+' → '+early.second)+' · '+P.duration(early.duration):'目前條件無班次';
  $('transfer-count').textContent=result.transfers.length+' 組';
- const rows=result.useful.filter(r=>mode==='all'||r.type===mode),slower=mode==='direct'?[]:result.slower;
- $('result-list').innerHTML=rows.slice(0,limit).map(r=>card(r)).join('');
+ const showAll=$('show-all').checked,rows=result.ranked.filter(r=>(mode==='all'||r.type===mode)&&(showAll||!(r.dominated||r.marginal)));
+ $('result-list').innerHTML=rows.slice(0,limit).map(card).join('');
  $('more').hidden=rows.length<=limit;$('more').textContent='顯示更多班次（還有 '+Math.max(0,rows.length-limit)+' 組）';
- $('slow-section').hidden=!slower.length;$('slow-count').textContent=slower.length+' 組';
- $('slow-list').innerHTML=slower.slice(0,slowLimit).map(r=>card(r,true)).join('');
- $('slow-more').hidden=slower.length<=slowLimit;
+ $('slow-count').textContent='（'+result.slower.length+'）';
  $('empty').hidden=!!(rows.length||slower.length);
  document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',b.dataset.mode===mode);b.setAttribute('aria-pressed',String(b.dataset.mode===mode));});
 }
@@ -76,10 +74,10 @@ function details(r){return `<div class="legs">${r.legs.map((leg,i)=>{
 $('query-form').addEventListener('submit',e=>{e.preventDefault();query();const target=result.error?$('message'):$('results');target.scrollIntoView({behavior:'smooth',block:'start'});if(!result.error)toast('已更新：直達 '+result.direct.length+' 班、轉乘 '+result.transfers.length+' 組');});$('query-form').addEventListener('change',query);
 $('swap').addEventListener('click',()=>{const x=$('origin').value;$('origin').value=$('destination').value;$('destination').value=x;query();});
 $('sort').addEventListener('change',query);
-$('more').addEventListener('click',()=>{limit+=10;render();});$('slow-more').addEventListener('click',()=>{slowLimit+=10;render();});
+$('more').addEventListener('click',()=>{limit+=10;render();});$('show-all').addEventListener('change',()=>{limit=8;render();});
 document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;limit=8;render();}));
 $('results').addEventListener('click',e=>{const btn=e.target.closest('[data-expand]');if(!btn)return;const id=btn.dataset.expand,r=[...result.direct,...result.transfers].find(x=>x.id===id);const el=$('details-'+id);if(el.hidden){el.innerHTML=details(r);el.hidden=false;btn.textContent='收合路線 −';btn.setAttribute('aria-expanded','true');}else{el.hidden=true;btn.textContent='展開路線 ＋';btn.setAttribute('aria-expanded','false');}});
-document.querySelectorAll('[data-tmode]').forEach(b=>b.addEventListener('click',()=>{setTmode(b.dataset.tmode);query();}));
+$('tmode').addEventListener('change',()=>setTmode($('tmode').value));
 $('now').addEventListener('click',()=>{const n=new Date();$('date').value=isoDate(n);$('after').value=clampTime(P.hhmm(n.getHours()*60+n.getMinutes()));setTmode('depart');mode='all';query();$('results').scrollIntoView({behavior:'smooth',block:'start'});});
 $('preset-list').addEventListener('click',e=>{const b=e.target.closest('[data-route]');if(!b)return;const [o,d]=b.dataset.route.split('-');$('origin').value=o;$('destination').value=d;mode='all';query();});
 $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(permalink());toast('已複製查詢連結');}catch{toast('請複製瀏覽器網址列的查詢連結');}});
