@@ -76,6 +76,8 @@ $('sort').addEventListener('change',query);
 $('more').addEventListener('click',()=>{limit+=10;render();});$('show-all').addEventListener('change',()=>{limit=8;render();});
 $('results').addEventListener('click',e=>{const btn=e.target.closest('[data-expand]');if(!btn)return;const id=btn.dataset.expand,r=[...result.direct,...result.transfers].find(x=>x.id===id);const el=$('details-'+id);if(el.hidden){el.innerHTML=details(r);el.hidden=false;btn.textContent='收合路線 −';btn.setAttribute('aria-expanded','true');}else{el.hidden=true;btn.textContent='展開路線 ＋';btn.setAttribute('aria-expanded','false');}});
 $('tmode').addEventListener('change',()=>setTmode($('tmode').value));
+// Tapping anywhere in the date/time box opens the native picker (Android needs the tap on the input itself otherwise).
+document.querySelectorAll('.box').forEach(box=>box.addEventListener('click',e=>{const el=box.querySelector('input');if(e.target!==el)e.preventDefault();try{el.showPicker();}catch{el.focus();}}));
 $('now').addEventListener('click',()=>{const n=new Date();$('date').value=isoDate(n);$('after').value=clampTime(P.hhmm(n.getHours()*60+n.getMinutes()));setTmode('depart');query();$('results').scrollIntoView({behavior:'smooth',block:'start'});});
 $('preset-list').addEventListener('click',e=>{const b=e.target.closest('[data-route]');if(!b)return;const [o,d]=b.dataset.route.split('-');$('origin').value=o;$('destination').value=d;query();});
 $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(permalink());toast('已複製查詢連結');}catch{toast('請複製瀏覽器網址列的查詢連結');}});
