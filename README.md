@@ -20,7 +20,7 @@ No build step, server, or third-party requests at runtime. Static HTML, CSS and 
 
 | Path | Purpose |
 |---|---|
-| `dist/` | Deployable site (HTML, CSS, JS, data, font, `CNAME`) |
+| `dist/` | Deployable site (HTML, CSS, JS, data, `CNAME`); text uses the system CJK font |
 | `data.json` | Canonical dataset; `dist/data.js` is the same data wrapped for the browser |
 | `scripts/collect.py` | Fetches the per-date timetable, non-reserved cars and fares from TDX (stdlib only) |
 | `verify.cjs` | Route, boundary and frontier checks run before every deploy |
