@@ -25,6 +25,7 @@ def get(url,bearer,date=''):
     for attempt in range(8):  # TDX throttles bursts with 429; back off and retry
         try:return json.load(urllib.request.urlopen(r,timeout=60))
         except urllib.error.HTTPError as ex:
+            if ex.code in (400,404):return None  # TDX answers 400, not an empty list, for dates it has not published yet
             if ex.code!=429:raise
             wait=int(ex.headers.get('Retry-After') or 0) or 5*(attempt+1);print(date,'429, waiting',wait,'s',file=sys.stderr);time.sleep(wait)
     raise SystemExit('TDX kept throttling')
@@ -59,13 +60,15 @@ def build(dates):
     bearer=token();groups={};fetched=[]
     for date in dates:
         rows=get(API%date,bearer,date)
-        if not rows:print(date,'not published yet, stopping',file=sys.stderr);break
-        free=get(FREE%date,bearer,date);free=free.get('FreeSeatingCars',free) if isinstance(free,dict) else free
+        if not rows:  # None (400/404) or empty: past the published window
+            print(date,'not published yet, stopping',file=sys.stderr);break
+        free=get(FREE%date,bearer,date) or [];free=free.get('FreeSeatingCars',free) if isinstance(free,dict) else free
         cars={e['TrainNo'].lstrip('0'):cars_of(e) for e in free}
         for row in rows:
             no,direction,stops,c=trip(row,cars)
             groups.setdefault((no,direction,json.dumps(stops),json.dumps(c)),[]).append(date)  # merge identical schedules across dates
         fetched.append(date);print(date,'fetched',len(rows),'trains',file=sys.stderr);time.sleep(1.5)
+    if not fetched:raise SystemExit('TDX returned no dates at all')
     trips=[{'no':no,'direction':d,'dates':sorted(ds),'cars':json.loads(c),'stops':json.loads(s)} for (no,d,s,c),ds in groups.items()]
     trips.sort(key=lambda t:(t['stops'][0]['dep'],t['no']))
     return {'fetched':fetched[0],'from':fetched[0],'to':fetched[-1],'source':'https://tdx.transportdata.tw/ (THSR DailyTimetable, DailyFreeSeatingCar)','trips':trips,'fares':fares(bearer)}
