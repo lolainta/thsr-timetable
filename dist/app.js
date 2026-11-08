@@ -46,7 +46,7 @@ if((!launchParams.has('from')||(launchParams.get('date')||'')<isoDate(new Date()
 function opts(){return {origin:Number($('origin').value),destination:Number($('destination').value),date:$('date').value||isoDate(new Date()),after:tmode==='depart'?P.parseTime($('after').value||'00:00'):0,arriveBy:tmode==='arrive'?P.parseTime($('after').value||'23:59'):null,minTransfer:Number($('min-transfer').value),maxWait:60,sort:$('sort').value};/* ponytail: wait cap fixed at 60; longer waits are always slower than a direct and land in the collapsed section */}
 function permalink(){const o=opts(),url=new URL(location.href);url.search='';const fields={from:o.origin,to:o.destination,date:o.date,[tmode==='arrive'?'by':'after']:P.hhmm(tmode==='arrive'?o.arriveBy:o.after),min:o.minTransfer,sort:o.sort};for(const [k,v] of Object.entries(fields))url.searchParams.set(k,v);return url.href;}
 function toast(t){$('toast').textContent=t;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,2600);}
-function query(){limit=8;result=P.search(D,opts());if(!result.error)remember(result.origin,result.destination);if(result.error){$('message').textContent=result.error;$('message').hidden=false;$('results').hidden=true;return;}$('message').hidden=true;$('results').hidden=false;try{history.replaceState(null,'',permalink());}catch{}render();}
+function query(){limit=8;result=P.search(D,opts());if(!result.error)remember(result.origin,result.destination);if(result.error){$('message').textContent=result.error;$('message').hidden=false;$('results').hidden=true;return;}$('message').hidden=true;$('results').hidden=false;if(!installHint)try{history.replaceState(null,'',permalink());}catch{}render();}
 function card(r){
  const origin=P.STATIONS[result.origin],dest=P.STATIONS[result.destination],isT=r.type==='transfer',slow=!!(r.dominated||r.marginal);
  const better=r.dominatedBy?(r.dominatedBy.type==='direct'?'直達 '+escapeHTML(r.dominatedBy.train):escapeHTML(r.dominatedBy.first)+'→'+escapeHTML(r.dominatedBy.second)):'';
@@ -90,6 +90,11 @@ document.querySelectorAll('.box').forEach(box=>box.addEventListener('click',e=>{
 $('now').addEventListener('click',()=>{const n=new Date();$('date').value=isoDate(n);$('after').value=clampTime(P.hhmm(n.getHours()*60+n.getMinutes()));setTmode('depart');query();$('results').scrollIntoView({behavior:'smooth',block:'start'});});
 $('preset-list').addEventListener('click',e=>{const b=e.target.closest('[data-route]');if(!b)return;const [o,d]=b.dataset.route.split('-');$('origin').value=o;$('destination').value=d;query();});
 $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(permalink());toast('已複製查詢連結');}catch{toast('請複製瀏覽器網址列的查詢連結');}});
-// Pages can't add themselves to the home screen; strip the query so Share → 加入主畫面 saves a link that always opens on now.
-$('home-url').addEventListener('click',()=>{try{history.replaceState(null,'',location.pathname);}catch{}toast('網址已清空，請按「分享 → 加入主畫面」');});
+// Install hint in the browser on phones. Android Chrome can open its own install dialog; iOS has no API for that, so explain the Share sheet.
+const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+let installHint=!standalone&&matchMedia('(pointer: coarse)').matches;try{if(localStorage.getItem('install-dismissed'))installHint=false;}catch{}
+if(installHint){$('install-text').textContent='加到主畫面，打開就是現在時間、最近車站：點下方「分享」→「加入主畫面」';$('install').hidden=false;try{history.replaceState(null,'',location.pathname);}catch{}}
+let installEvent=null;addEventListener('beforeinstallprompt',e=>{if(!installHint)return;e.preventDefault();installEvent=e;$('install-text').textContent='安裝到主畫面，打開就是現在時間、最近車站';$('install-go').hidden=false;});
+$('install-go').addEventListener('click',async()=>{if(!installEvent)return;installEvent.prompt();await installEvent.userChoice;installEvent=null;$('install').hidden=true;});
+$('install-close').addEventListener('click',()=>{$('install').hidden=true;installHint=false;try{localStorage.setItem('install-dismissed','1');}catch{}});
 query();
