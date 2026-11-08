@@ -32,9 +32,17 @@ function renderPresets(){const r=recent(),list=r.length?r:SAMPLES;$('presets-lab
 function setTmode(m){tmode=m;$('tmode').value=m;
  // Sort choices follow the mode: depart → earliest arrival first, arrive-by → latest departure first.
  const sort=$('sort'),opt=(v,off)=>{const o=sort.querySelector('[value='+v+']');o.hidden=off;o.disabled=off;};opt('arrival',m==='arrive');opt('departure',m==='depart');  /* iOS ignores hidden on <option>, so disable too */if(sort.value==='arrival'&&m==='arrive')sort.value='departure';if(sort.value==='departure'&&m==='depart')sort.value='arrival';}
-function loadParams(){const p=new URLSearchParams(location.search),ints={from:['origin',0,11],to:['destination',0,11],min:['min-transfer',5,20]};for(const [key,[id,min,max]] of Object.entries(ints)){if(!p.has(key))continue;const n=Number(p.get(key));if(Number.isInteger(n)&&n>=min&&n<=max&&[...$(id).options].some(o=>Number(o.value)===n))$(id).value=String(n);}const d=p.get('date');if(d&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=$('date').min&&d<=$('date').max)$('date').value=d;const t=p.get('by')||p.get('after');if(t&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t))$('after').value=clampTime(t);setTmode(p.has('by')?'arrive':'depart');if(p.get('sort')==='duration')$('sort').value='duration';}
+function loadParams(){const p=new URLSearchParams(location.search),ints={from:['origin',0,11],to:['destination',0,11],min:['min-transfer',5,20]};for(const [key,[id,min,max]] of Object.entries(ints)){if(!p.has(key))continue;const n=Number(p.get(key));if(Number.isInteger(n)&&n>=min&&n<=max&&[...$(id).options].some(o=>Number(o.value)===n))$(id).value=String(n);}const d=p.get('date'),stale=d&&d<isoDate(new Date());/* a saved link (bookmark, home-screen icon) carries its old date; past dates fall back to now */if(d&&!stale&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&d>=$('date').min&&d<=$('date').max)$('date').value=d;const t=p.get('by')||p.get('after');if(!stale&&t&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t))$('after').value=clampTime(t);setTmode(p.has('by')?'arrive':'depart');if(p.get('sort')==='duration')$('sort').value='duration';}
 renderPresets();
 loadParams();
+// No origin in the URL, or an old saved link: start from the station nearest the device, if the visitor allows location.
+const launchParams=new URLSearchParams(location.search);
+const COORDS=[[25.053,121.607],[25.048,121.517],[25.014,121.464],[25.013,121.215],[24.808,121.040],[24.606,120.826],[24.112,120.616],[23.874,120.575],[23.736,120.416],[23.459,120.323],[22.925,120.286],[22.687,120.308]];
+if((!launchParams.has('from')||(launchParams.get('date')||'')<isoDate(new Date()))&&navigator.geolocation)navigator.geolocation.getCurrentPosition(({coords:{latitude:la,longitude:lo}})=>{
+ const dist=([a,b])=>(a-la)**2+((b-lo)*Math.cos(la*Math.PI/180))**2;  // ponytail: flat-earth distance, fine for picking among 12 stations
+ const near=String(COORDS.reduce((best,c,i)=>dist(c)<dist(COORDS[best])?i:best,0)),prev=$('origin').value;
+ if(near===prev)return;if(near===$('destination').value)$('destination').value=prev;$('origin').value=near;query();
+},()=>{},{maximumAge:6e5,timeout:1e4});
 function opts(){return {origin:Number($('origin').value),destination:Number($('destination').value),date:$('date').value||isoDate(new Date()),after:tmode==='depart'?P.parseTime($('after').value||'00:00'):0,arriveBy:tmode==='arrive'?P.parseTime($('after').value||'23:59'):null,minTransfer:Number($('min-transfer').value),maxWait:60,sort:$('sort').value};/* ponytail: wait cap fixed at 60; longer waits are always slower than a direct and land in the collapsed section */}
 function permalink(){const o=opts(),url=new URL(location.href);url.search='';const fields={from:o.origin,to:o.destination,date:o.date,[tmode==='arrive'?'by':'after']:P.hhmm(tmode==='arrive'?o.arriveBy:o.after),min:o.minTransfer,sort:o.sort};for(const [k,v] of Object.entries(fields))url.searchParams.set(k,v);return url.href;}
 function toast(t){$('toast').textContent=t;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,2600);}
@@ -82,4 +90,6 @@ document.querySelectorAll('.box').forEach(box=>box.addEventListener('click',e=>{
 $('now').addEventListener('click',()=>{const n=new Date();$('date').value=isoDate(n);$('after').value=clampTime(P.hhmm(n.getHours()*60+n.getMinutes()));setTmode('depart');query();$('results').scrollIntoView({behavior:'smooth',block:'start'});});
 $('preset-list').addEventListener('click',e=>{const b=e.target.closest('[data-route]');if(!b)return;const [o,d]=b.dataset.route.split('-');$('origin').value=o;$('destination').value=d;query();});
 $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(permalink());toast('已複製查詢連結');}catch{toast('請複製瀏覽器網址列的查詢連結');}});
+// Pages can't add themselves to the home screen; strip the query so Share → 加入主畫面 saves a link that always opens on now.
+$('home-url').addEventListener('click',()=>{try{history.replaceState(null,'',location.pathname);}catch{}toast('網址已清空，請按「分享 → 加入主畫面」');});
 query();
